@@ -1,0 +1,51 @@
+//-------------------------------------------------------
+// LOAD & INCLUDES
+//-------------------------------------------------------
+// --- FreeFEM ---
+load "msh3"
+load "tetgen2"
+load "iovtk"
+include "MeshSurface.idp"
+// --- USER DEFINED ---
+include "config.edp"
+include "pkgMesh/mesh_surface.idp"
+include "pkgMesh/mesh_macro.idp"
+include "bMacro.idp"
+include "macro.idp"
+
+//-------------------------------------------------------
+// COMPUTATION
+//-------------------------------------------------------
+
+if(MPIRank == 0){
+    cout << "......................................................." << endl;
+    cout << "--- POS ---" << "\n" << Pos << endl;
+    cout << "......................................................." << endl;
+    cout << "--- R ---" << "\n" << R << endl;
+    cout << "......................................................." << endl;
+}
+
+mpiBarrier(Comm);
+
+
+real[int] ElapsedMsh(1); real timeMesh = clock();
+// construct meteor Meshes in parallel
+
+meshS ThS;
+
+initMeteorMesh
+
+{
+    setMeteorMesh
+}
+
+
+mpiBarrier(Comm);
+
+if(MPIRank == 0){
+    savemesh(ThS, meshPath);
+    
+    ElapsedMsh[0] = clock() - timeMesh;
+    
+    recordMesh 
+}

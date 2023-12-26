@@ -1,0 +1,305 @@
+// MODIFIED FROM
+// https://github.com/FreeFem/FreeFem-sources/blob/master/examples/hpddm/helmholtz-3d-surf-PETSc-complex.edp
+
+/*
+NOTE:
+FOR MORE METEORS ONLY ON ONE PROCESS POSSIBLE TO ACHIEVE PARALLELISM 
+ONE CAN DO THE FOLLOWING THING
+-> DISTRIBUTE THE WORK OF ASSEMBLING EQUALLY
+-> SEND THE MATRICES TO THE CORRESPONDING RANKS
+-> ASSEMBLE WITH PETSC WITH: 
+https://github.com/FreeFem/FreeFem-sources/blob/master/examples/hpddm/block-PETSc.edp
+-> EVAL SOLUTION 
+*/
+
+
+//-------------------------------------------------------
+// LOAD & INCLUDES
+//-------------------------------------------------------
+
+// --- FreeFEM ---
+load "bem"
+load "msh3"
+load "iovtk"
+load "PETSc-complex"
+include "MeshSurface.idp"
+macro dimension()3S//
+include "macro_ddm2.idp"
+
+// --- USER DEFINED ---
+include "configRun.edp"
+include "pkgMesh/mesh_surface.idp"
+include "bMacro.idp"
+include "pkgMesh/mesh_macro.idp"
+include "macro.idp"
+
+
+// -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-
+// FUNDAMENTAL SETTINGS
+//
+// -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-
+
+// ----- LAPLACIAN PROBLEM -----
+complex k = 0;
+
+// ----- INIT VECTOR TO STORE SOL -----
+int numElem = 0;
+for(int i = 0; i < numMeteor; i++){numElem += (i + 1);}
+real[int] Cap(2*numMeteor-1), CapG(2*numMeteor-1);
+
+real[int] EffCap(3), EffCapG(3);
+
+// not needed here, but needed for compatibility
+real[int] NormArea(numMeteor);
+
+// array for storing the elapsed time
+real[int] Elapsed(2), ElapsedMsh(1), ElapsedSol(2);
+
+// -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-
+// (0) MESH
+//
+// init mesh
+
+real timeMesh = clock();
+
+// -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-
+
+
+// construct meteor meshes in parallel
+meshS ThS = readmeshS(meshPath);
+
+//initMeteorMesh
+//{
+//    setMeteorMeshMPI0
+//}
+mpiBarrier(Comm);
+
+if(MPIRank == 0){cout << "INFO: meshS loaded " << endl;}
+
+// define a variable to store the global mesh along all processes
+meshS ThG; ThG = ThS;
+
+
+// -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-
+// (1) ASSEMBLE
+//
+
+real timeAssemble = clock(); 
+ElapsedMsh[0] = timeAssemble - timeMesh;
+
+// assemble H-Matrix for BEM to solve the Dirichlet problem and 
+// double transpose layer to get the gauss integral
+// -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-
+
+// ----- FESPACES -----
+
+// define FE-Spaces (local, global)
+fespace Uh(ThS, P1);
+fespace UhG(ThG, P1);
+
+// define H-Matrix (approx. discretized Green function)
+Mat<complex> H, HPot;
+
+if( mpirank == 0 ){ recordState }
+mpiBarrier(Comm);
+
+if(MPIRank == 0){cout << "INFO: begin ddm " << endl;}
+mpiBarrier(Comm);
+
+int[int] n2o;
+{   
+    // get the indices due to the partitioning
+    macro ThSN2O()n2o//
+    createMat(ThS, H, P1);
+    mpiBarrier(Comm);
+    createMat(ThS, HPot, P1);
+    mpiBarrier(Comm);
+    Mat<complex> T;
+    createMat(ThS, T, P0);
+    mpiBarrier(Comm);
+    // renumber global mesh in order to use BEM with PETSC
+    CoherentGlobalMesh(T, H, ThS, ThG);
+}
+
+
+if( mpirank == 0 ){ recordState }
+mpiBarrier(Comm);
+
+if(MPIRank == 0){cout << "INFO: ddm done " << endl;}
+mpiBarrier(Comm);
+
+// ----- SL TO SOLVE -----
+
+/* SINGLE-LAYER for Dirichlet Problem */
+varf SL(u, v) = int2dx2d(ThG)(ThG)(BEM(BemKernel("SL", k=k), u, v));
+if(MPIRank == 0){cout << "INFO: construct single layer... " << endl;}
+
+/* assemble matrix */
+H = SL(UhG, UhG, sparams = "-mat_htool_epsilon 1.0e-9 -mat_htool_eta 1");
+set(H, sparams="-ksp_type fgmres -ksp_gmres_restart 300 -pc_type asm");
+
+if(MPIRank == 0){cout << "INFO: single layer constructed " << endl;}
+
+// ----- TDL FOR CAP -----
+
+/* DOUBLE-LAYER for integral */
+varf TDL(u, v) = int2dx2d(ThG)(ThG)(BEM(BemKernel("TDL", k=k), u, v));
+if(MPIRank == 0){cout << "INFO: construct transposed double layer..." << endl;}
+
+/* assemble matrix for reconstruction (maybe restrict UhG) */
+HPot = TDL(UhG, UhG, sparams = "-mat_htool_epsilon 1.0e-9 -mat_htool_eta 1");
+if(MPIRank == 0){cout << "INFO: transposed double layer constructed " << endl;}
+
+/* solution vector */
+Uh<complex> CAP; Uh CAPreal;
+
+
+// -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-
+// (1) ITERATE
+//
+// Iterate through all configuations, solve problem and get the integral
+
+real timeEval = clock();
+Elapsed[0] = timeEval - timeAssemble;
+
+// -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-
+
+// C11 && C12
+{ 
+
+    ElapsedSol[0] -= clock();
+
+    // ----- SET RIGHT HAND SIDE -----
+            
+    varf vBOUNDARY(unused, v) = on(0 + 7, unused = 1); 
+    Uh BOUNDARY; BOUNDARY[] = vBOUNDARY(0, Uh, tgv=-1);  
+
+    varf vRHS(unused, v) = int2d(ThS)(BOUNDARY * v);
+
+    complex[int] RHS = vRHS(0, Uh);
+
+
+    // ---- SOLVE PROBLEM ON SURFACE -----
+    complex[int] p = H^-1 * RHS;
+    
+    ElapsedSol[0] += clock();
+
+    // ---- GET CAP -----
+    CAP[] = HPot*p;
+
+    CAPreal = real(CAP);
+    
+    CAPreal[] .*= HPot.D;
+
+    // ---- GET CAP FOR EACH SPHERE -----
+    
+
+    /* store solution of capacity coefficient only for one sphere*/
+    for(int ind1 = 0; ind1 < numMeteor; ind1++){
+        varf vFILTER(unused, v) = on(ind1 + 7, unused = 1);
+        
+        real[int] FILTER = vFILTER(0, Uh, tgv=-1);
+                
+        real C = 1/(2*pi) * ( FILTER'*CAPreal[] );
+
+        if( ind1 == 0){
+            Cap[ ind1 ] = C;
+        }else{
+            Cap[ numMeteor + ind1 - 1 ] = C;
+        }
+
+
+        if(MPIRank == 0){cout << "INFO: capacity coefficient ( " + 0 + " , " + ind1 + " ) calculated" << endl;}   
+	}
+    mpiBarrier(Comm);         
+}
+
+// C22
+if(numMeteor > 1){ 
+
+    ElapsedSol[1] -= clock();
+
+    // ----- SET RIGHT HAND SIDE -----
+            
+    varf vBOUNDARY(unused, v) = deltaUZero(unused) + deltaUOneMeteor(unused) + on(7, unused = 0); 
+    Uh BOUNDARY; BOUNDARY[] = vBOUNDARY(0, Uh, tgv=-1);  
+
+    varf vRHS(unused, v) = int2d(ThS)(BOUNDARY * v);
+
+    complex[int] RHS = vRHS(0, Uh);
+
+    // ---- SOLVE PROBLEM ON SURFACE -----
+    complex[int] p = H^-1 * RHS;
+
+    ElapsedSol[1] += clock();
+    
+    // ---- GET CAP -----
+    CAP[] = HPot*p;
+
+    CAPreal = real(CAP);
+    
+    CAPreal[] .*= HPot.D;
+
+    // ---- GET CAP FOR EACH SPHERE -----
+    
+
+    /* store solution of capacity coefficient only for one sphere*/
+
+    for(int ind2 = 0; ind2 < numMeteor; ind2++){
+
+        varf vFILTER(unused, v) = on(ind2 + 7, unused = 1);
+        
+        real[int] FILTER = vFILTER(0, Uh, tgv=-1);
+        
+        real C = 1/(2*pi) * ( FILTER'*CAPreal[] );
+
+        if( ind2 == 0 ){
+            EffCap[ 1 ] = C;
+        }else{
+            Cap[ ind2 ] = C;
+        }
+
+        if(MPIRank == 0){cout << "INFO: capacity coefficient ( " + ind2 + " , " + ind2 + " ) calculated" << endl;}   
+	}
+    mpiBarrier(Comm);         
+}
+
+
+
+// -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-
+// (4) RECORD
+//
+//  store the values needed for the later analysis
+
+Elapsed[1] = clock() - timeEval;
+
+// -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-
+
+
+// reduce local solution
+
+mpiBarrier(Comm);
+mpiAllReduce(Cap, CapG, Comm, mpiSUM);
+Cap = CapG;
+mpiBarrier(Comm);
+mpiAllReduce(EffCap, EffCapG, Comm, mpiSUM);
+EffCap = EffCapG;
+
+
+// save all results
+if(MPIRank==0){
+
+    // C11
+    EffCap[0] = Cap[ 0 ];
+
+    // C22
+    for(int ind1 = 1; ind1 < numMeteor; ind1++){
+        EffCap[ 2 ] += Cap[ ind1 ];
+    }    
+
+    record
+}
+mpiBarrier(Comm);
+
+if( mpirank == 0 ){ recordState }
+mpiBarrier(Comm);

@@ -1,0 +1,130 @@
+// -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
+// (0.) HELPER 
+// -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-
+
+macro getFilter(Vh, ind)
+    varf varfFilter(unused, v) = on(ind, unused=1.0); 
+    real[int] Filter = varfFilter(0, Vh, tgv=-1);
+//
+
+// -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
+// (1.) GENERAL (VARIATIONAL) FORMULATION 
+// -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-
+
+// Normal-Vector of Sphere
+macro Normal() [N.x, N.y, N.z]//
+
+// 3D-Gradient
+macro Grad(u) [dx(u), dy(u), dz(u)]//
+
+// H0-Norm
+macro H0(u, v) int3d(Th, qfV=QFV)(u*v)//
+
+// H1-Norm
+macro H1(u, v) int3d(Th, qfV=DQFV)(dx(u)*dx(v) + dy(u)*dy(v) + dz(u)*dz(v))//
+
+macro H1No(u, v) int3d(ThNo, qfV=DQFV)(dx(u)*dx(v) + dy(u)*dy(v) + dz(u)*dz(v))//
+
+// -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-
+// (2.) INTEGRAL EVALUATION
+// -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-
+
+macro sumMPI(local, global)
+{
+mpiAllReduce(local, global, Comm, mpiSUM);
+}
+//
+
+macro getLocalCap2(vh, mInd)
+{
+    localCap = 1/(4*pi) * int2d(ThNo, mInd + 7, qft=QFT)((dx(vh) * N.x + dy(vh) * N.y + dz(vh) * N.z));
+}
+//
+
+macro getLocalCap(mInd)
+{
+    localCap = 1/(4*pi) * int2d(ThNo, mInd + 7, qft=QFT)((dx(uh) * N.x + dy(uh) * N.y + dz(uh) * N.z));
+}
+//
+
+macro getLocalNormArea(mInd)
+{
+    localNormArea = (1/(4*pi*R[mInd]^2)) * int2d(ThNo, mInd + 7, qft=QFT)(1.0);
+}
+//
+
+
+// -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
+// (3.) RECORDS
+// -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-
+
+macro recordVar(varName, var)
+{
+    string dataPath = dataDir+"/"+Stringification(varName)+".log" + currInd;
+    ofstream streamLog#varName(dataPath);
+    streamLog#varName.precision(16);
+    streamLog#varName << var << endl;
+}
+//
+
+macro recordVarMesh(varName, var)
+{
+    string meshPath = meshDir+"/"+meshName+"_"+Stringification(varName)+".log" + currInd;
+    ofstream streamLog#varName(meshPath);
+    streamLog#varName.precision(16);
+    streamLog#varName << var << endl;
+}
+//
+
+
+
+macro record
+{   
+    recordVar(cap, Cap)    
+    recordVar(effCap, EffCap)
+    recordVar(sfc, NormArea)
+    recordVar(tim, Elapsed)
+    /*recordVar(timSol, ElapsedSol)*/
+
+    int MPICommSize = mpiSize(Comm);
+    int[int] CommSize = [MPICommSize];
+    recordVar(ntasks, CommSize)
+}
+//
+
+macro recordState
+{   
+    string dataPath = dataDir+"/record"+currInd+".err";
+    ofstream streamLogState(dataPath, append);
+    streamLogState << 1 << endl;
+    streamLogState.flush;
+}
+//
+
+macro recordBEM
+{   
+    recordVar(cap, Cap)    
+    recordVar(sfc, NormArea)
+    recordVar(tim, Elapsed)
+}
+//
+
+macro recordMesh 
+{
+    recordVar(sph, ChoiceThS)
+    recordVar(timMsh, ElapsedMsh)
+    
+    real[int] mshRes(ChoiceThS.n);
+    for [ i, elem : ChoiceThS ]{mshRes[i] = List[elem];} 
+    recordVar(msh, mshRes)
+
+    recordVar(ares, AResVec)
+    recordVar(res, CHOICExARes)
+    recordVar(h2s, CHOICExh2STet)
+
+    recordVar(pos, Pos)
+    recordVar(rad, R)
+    real[int] Conf = [boxSize, boxNumElem, hS, ARes, maxVol, ratioRadiusEdge, minDihedralAngle];
+    recordVar(conf, Conf)
+}
+//

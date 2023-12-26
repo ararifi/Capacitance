@@ -1,0 +1,478 @@
+// -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-
+// (2.) MESH CREATION
+// -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-
+
+// load the lebedev meshSes
+macro initMeteorMesh
+
+/* ARRAY THAT ARE GLOVALLY DEFINED */
+/*
+real[int] CHOICExARes(R.n); real[int] CHOICExh2STet(R.n);
+*/
+
+/* get the List of possible meshes */
+real[int] List = LISTxARes();
+/* the choice of the surface meshes */
+int[int] ChoiceThS(R.n);
+/* get the unique surface meshes in order to minimize IOs */
+int[int] ChoiceThSUnique;
+
+/* filling arrays */    
+{
+    /* choose resolution for the meshes */
+    if(DOsfc == 0){
+        int choice = CHOOSExARes(List, ARes); 
+        ChoiceThS = choice;
+        CHOICExARes = List[choice];
+    }else if(DOsfc == 1){
+        for [ind, elem : ChoiceThS]{
+            real AResScaled = (1.0 * ARes) / R[ind];
+            elem = CHOOSExARes(List, AResScaled); 
+            CHOICExARes[ind] = List[elem];
+        }
+    }else if(DOsfc == 2){
+        for [ind, elem : ChoiceThS]{
+            real AResScaled = (1.0 * ARes) / (R[ind]^2);
+            elem = CHOOSExARes(List, AResScaled); 
+            CHOICExARes[ind] = List[elem];
+        }
+    }else if(DOsfc == 3){
+        for [ind, elem : ChoiceThS]{
+            real RAtInd = R[ind];
+            real AResScaled = (1.0 * ARes) / RAtInd;            
+            if(RAtInd < 0.1){ AResScaled = (1.0 * ARes) / 0.1;}
+            elem = CHOOSExARes(List, AResScaled); 
+            CHOICExARes[ind] = List[elem];
+        }   
+    }else{cout << "DOsfc not set" << endl; exit(1);}
+
+    /* choose resolution for the meshes during tetgen procedure */
+
+    if(DOh2STet == 0){
+        CHOICExh2STet = 0;
+    }else if(DOh2STet == 1){
+        int choice = CHOOSExARes(List, ARes); 
+        CHOICExh2STet = 1.0 * FINEFACTOR * List[choice];
+    }else if(DOh2STet == 2){
+        for [ind, elem : CHOICExh2STet]{
+            real AResRESCALE = (1.0 * ARes) * R[ind]^2;
+            elem = FINEFACTOR * AResRESCALE ;
+        }
+    }else if(DOh2STet == 3){
+        for [ind, elem : CHOICExh2STet]{
+            real AResRESCALE;
+            /*
+            if(DOsfc == 0){
+                AResRESCALE = CHOICExARes[ind] * R[ind]^2;
+            }else{
+                AResRESCALE = CHOICExARes[ind];
+            }
+            */
+            AResRESCALE = CHOICExARes[ind] * R[ind]^2;
+            elem = FINEFACTOR * AResRESCALE ;
+        }
+    }else{cout << "DOh2STet not set" << endl; exit(1);}
+
+    /* get the unique values of the lebedev meshes */
+    {
+        int[int] ChoiceThSSorted = ChoiceThS; ChoiceThSSorted.sort;
+        int oldElem=-1;
+        for [i, elem : ChoiceThSSorted]{
+            if(oldElem != elem){
+                ChoiceThSUnique = [ChoiceThSUnique, elem]; oldElem = elem;
+            }
+        }
+    }
+    cout << "......................................................." << endl;
+    cout << "--- possibleSpheres ---" << "\n" << List << endl;
+    cout << "--- ChoiceThS ---" << "\n" << ChoiceThS << endl;
+    cout << "--- ChoiceThSUnique ---" << "\n" << ChoiceThSUnique << endl;
+    cout << "......................................................." << endl;
+}
+
+meshS[int] ArrThS(ChoiceThSUnique.n);
+/* filling mesh arrays */
+{
+    /* load the corresponding meshes */
+    for (int i = 0; i < ChoiceThSUnique.n; i++){
+        ArrThS[i] = LOADxind(ChoiceThSUnique[i]);
+    }
+}
+//
+
+
+// transform the loaded meshSes and clue them into the 
+// global surface meshS with MPI
+macro setMeteorMeshMPItoRank0
+/* one has to consider if to less particles are in the system */
+if(MPIRank < numMeteor){   
+    
+    int chunckSize = MPICommSize > numMeteor ? numMeteor : MPICommSize;
+    
+    meshS ThSmeteor, MAINThSmeteor;
+
+    for (int ind = MPIRank; ind < numMeteor; ind += chunckSize){
+        /* create meshS for given meteor @ ind */
+        meshS ThSmeteorONE;
+        /* eval label */
+        int L = ind + 7;
+        /* set the axis of the meteor */
+        real[int] Axis = [R[ind], R[ind], R[ind]];
+        /* set the position of the meteor */
+        real[int] Coord = [Pos[3*ind], Pos[3*ind + 1], Pos[3*ind + 2]];
+        
+        /* find the right mesh index */
+        for [indThS, elem : ChoiceThSUnique]{
+            if(elem == ChoiceThS[ind]){
+                ThSmeteorONE = ArrThS[indThS];
+                formMeshS(ThSmeteorONE, Axis, L, 1);
+                shiftMeshS(ThSmeteorONE, Coord, L, 1);
+                cout << "Meteor " << ind << " is set from rank: " << MPIRank << endl;
+            }
+        }
+        ThSmeteor = ThSmeteor + ThSmeteorONE;
+    }
+
+
+    /* send all meshes to the first process  */      
+    mpiRequest sendRq, recvRq;
+    if(MPIRank != 0){
+        Isend(processor(0, Comm, sendRq), ThSmeteor);
+    }else{
+        MAINThSmeteor = ThSmeteor;        
+        for (int i = 1; i < numMeteor; i++){
+            Irecv(processor(i, Comm, recvRq), ThSmeteor);
+            cout << "ThS recieved from "  << i << endl;
+            mpiWait(recvRq);
+            MAINThSmeteor = MAINThSmeteor + ThSmeteor;
+        }
+    }
+    mpiWait(sendRq);
+    cout << "MPIrank "  << MPIRank << " send ThS" << endl;
+    ThS = ThS + MAINThSmeteor;
+}
+//
+
+
+// transform the loaded meshSes and clue them into the 
+// global surface meshS with MPI
+macro setMeteorMeshMPICross
+/* one has to consider if to less particles are in the system */
+{
+
+    meshS ThSmeteor, MAINThSmeteor;
+    if(MPIRank < numMeteor){   
+
+        int chunckSize = MPICommSize > numMeteor ? numMeteor : MPICommSize;
+
+        for (int ind = MPIRank; ind < numMeteor; ind += chunckSize){
+            /* create meshS for given meteor @ ind */
+            meshS ThSmeteorONE;
+            /* eval label */
+            int L = ind + 7;
+            /* set the axis of the meteor */
+            real[int] Axis = [R[ind], R[ind], R[ind]];
+            /* set the position of the meteor */
+            real[int] Coord = [Pos[3*ind], Pos[3*ind + 1], Pos[3*ind + 2]];
+
+            /* find the right mesh index */
+            for [indThS, elem : ChoiceThSUnique]{
+                if(elem == ChoiceThS[ind]){
+                    ThSmeteorONE = ArrThS[indThS];
+                    formMeshS(ThSmeteorONE, Axis, L, 1);
+                    shiftMeshS(ThSmeteorONE, Coord, L, 1);
+                    cout << "Meteor " << ind << " is set from rank: " << MPIRank << endl;
+                }
+            }
+            if(ind%20 == 0){
+                MAINThSmeteor = MAINThSmeteor + ThSmeteor;
+                ThSmeteor = ThSmeteorONE;
+            }else{
+                ThSmeteor = ThSmeteor + ThSmeteorONE;
+            }
+        }
+    }
+    
+    MAINThSmeteor = MAINThSmeteor + ThSmeteor;  
+    
+    mpiRequest recvRq, sendRq;
+    for( int phase=1; phase < MPICommSize; phase++ ){
+        cout << "PHASE "  << phase - 1 << " OF " << MPICommSize -  1 << endl;
+
+        /* SEND */
+        int MPIRankRecver = (MPIRank + phase)%MPICommSize;
+        cout << "HELLO FROM MPIRANK " << MPIRank << endl;
+        if(MPIRank < numMeteor){
+            Isend(processor(MPIRankRecver, Comm, sendRq), ThSmeteor);
+            cout << "SENDER: " << MPIRank << ", RECV: " << MPIRankRecver << endl;
+        }
+        
+        /* RECV */
+        int MPIRankSender = (MPIRank - phase + MPICommSize)%MPICommSize;
+        cout << "MPIRank " << MPIRankSender << " IS SENDER OF " << MPIRank << endl;
+        if(MPIRankSender < numMeteor){
+            Irecv(processor(MPIRankSender, Comm, recvRq), ThSmeteor);
+            cout << "RECV: " << MPIRank << ", SENDER: " << MPIRankSender << endl;
+            mpiWait(recvRq); 
+        }
+
+    /* MERGE  */
+    MAINThSmeteor = MAINThSmeteor + ThSmeteor;
+    }
+    
+
+    ThS = ThS + MAINThSmeteor;
+    mpiBarrier(Comm);
+}
+//
+
+
+macro setMeteorMesh
+{   
+    for (int ind = 0; ind < numMeteor; ind++){
+        /* create meshS for given meteor @ ind */
+        meshS ThSmeteor;
+        /* eval label */
+        int L = ind + 7;
+        /* set the axis of the meteor */
+        real[int] Axis = [R[ind], R[ind], R[ind]];
+        /* set the position of the meteor */
+        real[int] Coord = [Pos[3*ind], Pos[3*ind + 1], Pos[3*ind + 2]];
+        
+        /* find the right mesh index */
+        for [indThS, elem : ChoiceThSUnique]{
+            if(elem == ChoiceThS[ind]){
+                ThSmeteor = ArrThS[indThS];
+                formMeshS(ThSmeteor, Axis, L, 1);
+                shiftMeshS(ThSmeteor, Coord, L, 1);
+                cout << "Meteor " << ind << " is set.";
+            }
+        }
+        ThS = ThS + ThSmeteor;
+    }
+}
+//
+
+
+macro initThS
+
+meshS ThS;
+
+{
+    /* ----- BOX ----- */
+
+    /* number of elements */
+    int[int] dimBoxNumElem = [boxNumElem, boxNumElem, boxNumElem];
+
+    /* box (size-)dimension */
+    real [int,int] B = [[-boxSize/2., boxSize/2.], 
+                        [-boxSize/2., boxSize/2.], 
+                        [-boxSize/2., boxSize/2.]];
+
+    /* labels */
+    int [int,int] L = [[1, 2], [3, 4], [5, 6]];
+
+    ThS = SurfaceHex(dimBoxNumElem, B, L, 1);
+
+}
+    /* ----- PARTICLES ----- */
+    initMeteorMesh
+{
+    setMeteorMeshMPICross
+}
+//
+
+macro initTh
+
+mesh3 Th;
+
+{
+    /* ----- 3D TETGEN MESH ----- */
+
+    real[int] domain = [boxSize/2 * 0.99, boxSize/2 * 0.99, boxSize/2 * 0.99, 0, maxVol];
+    
+    /* constraints for faces */
+    int nbFacecl = numMeteor;
+
+    real[int] Facecl(2 * numMeteor);
+    for [ind, elem : CHOICExh2STet]{
+        Facecl[2*ind] = 7 + ind;
+        Facecl[2*ind + 1] = elem; 
+    }
+    string mySwitch = "pq"+string(ratioRadiusEdge)+"/"+string(minDihedralAngle)+"aA" + addSwitch + "CV";
+    /* run tetgen */
+    if(DOh2STet == 0){
+        Th = tetg(
+            ThS, 
+            switch=mySwitch, 
+            nbofregions = 1, regionlist = domain, 
+            nbofholes = numMeteor, holelist = Pos);
+    }else{
+        Th = tetg(
+            ThS, 
+            switch=mySwitch, 
+            nboffacetcl = nbFacecl, facetcl = Facecl,
+            nbofregions = 1, regionlist = domain, 
+            nbofholes = numMeteor, holelist = Pos);
+    }
+}
+//
+
+macro initThv2
+
+mesh3 Th;
+
+{
+    /* ----- 3D TETGEN MESH ----- */
+
+    real[int] domain(5*(numMeteor + 1));
+    for ( int ind = 0; ind < numMeteor; ind++){
+        domain(5*ind:5*ind+4) = [Pos[3*ind], Pos[3*ind + 1], Pos[3*ind + 2], ind, maxVol];
+    }
+    domain(5*numMeteor:5*numMeteor+4) = [boxSize/2 * 0.99, boxSize/2 * 0.99, boxSize/2 * 0.99, 0, maxVol];
+
+    /* constraints for faces */
+    int nbFacecl = numMeteor;
+
+    real[int] Facecl(2 * numMeteor);
+    for [ind, elem : CHOICExh2STet]{
+        Facecl[2*ind] = 7 + ind;
+        Facecl[2*ind + 1] = elem; 
+    }
+    string mySwitch = "pq"+string(ratioRadiusEdge)+"/"+string(minDihedralAngle)+"aA" + addSwitch + "CV";
+    /* run tetgen */
+    if(DOh2STet == 0){
+        Th = tetg(
+            ThS, 
+            switch=mySwitch, 
+            nbofregions = (numMeteor + 1), regionlist = domain);
+    }else{
+        Th = tetg(
+            ThS, 
+            switch=mySwitch, 
+            nboffacetcl = nbFacecl, facetcl = Facecl,
+            nbofregions = (numMeteor + 1), regionlist = domain);
+    }
+}
+//
+
+
+/* ---------------------- OLD STUFF ----------------------
+    
+// load the lebedev meshSes
+macro initMeteorMeshOLD
+
+# get the List of possible meshes %
+real[int] List = listMeshS();
+int[int] ChoiceThSUnique;
+int[int] ChoiceThS(R.n);
+
+
+
+# filling arrays %    
+{
+    # choose resolution for the meshses %
+    if(adaptiveSfc){
+        for [ind, elem : ChoiceThS]{
+            real hSscaled = (1.0 * hS) / R[ind];
+            elem = chooseMeshS(List, hSscaled); 
+        }
+    }else{
+        int choice = chooseMeshS(List, hS); 
+        ChoiceThS = choice;
+    }
+
+    # get the unique values of the lebedev meshes %
+    {
+        int[int] ChoiceThSSorted = ChoiceThS; ChoiceThSSorted.sort;
+        int oldElem=0;
+        for [i, elem : ChoiceThSSorted]{
+            if(oldElem != elem){
+                ChoiceThSUnique = [ChoiceThSUnique, elem]; oldElem = elem;
+            }
+        }
+    }
+    cout << "......................................................." << endl;
+    cout << "--- possibleSpheres ---" << "\n" << List << endl;
+    cout << "--- ChoiceThS ---" << "\n" << ChoiceThS << endl;
+    cout << "......................................................." << endl;
+}
+
+meshS[int] ArrThS(ChoiceThSUnique.n);
+# filling mesh arrays %
+{
+    # load the corresponding meshes %
+    for (int i = 0; i < ChoiceThSUnique.n; i++){
+        ArrThS[i] = LOADxind(ChoiceThSUnique[i]);
+    }
+}
+//
+
+// transform the loaded meshSes and clue them into the 
+// global surface meshS with MPI
+macro setMeteorMeshMPICrossOLD
+# one has to consider if to less particles are in the system %
+{
+
+    meshS ThSmeteor, MAINThSmeteor;
+    if(MPIRank < numMeteor){   
+
+        int chunckSize = MPICommSize > numMeteor ? numMeteor : MPICommSize;
+
+        for (int ind = MPIRank; ind < numMeteor; ind += chunckSize){
+            # create meshS for given meteor @ ind %
+            meshS ThSmeteorONE;
+            # eval label %
+            int L = ind + 7;
+            # set the axis of the meteor %
+            real[int] Axis = [R[ind], R[ind], R[ind]];
+            # set the position of the meteor %
+            real[int] Coord = [Pos[3*ind], Pos[3*ind + 1], Pos[3*ind + 2]];
+
+            # find the right mesh index %
+            for [indThS, elem : ChoiceThSUnique]{
+                if(elem == ChoiceThS[ind]){
+                    ThSmeteorONE = ArrThS[indThS];
+                    formMeshS(ThSmeteorONE, Axis, L, 1);
+                    shiftMeshS(ThSmeteorONE, Coord, L, 1);
+                    cout << "Meteor " << ind << " is set from rank: " << MPIRank << endl;
+                }
+            }
+            ThSmeteor = ThSmeteor + ThSmeteorONE;
+        }
+    }
+
+    MAINThSmeteor = ThSmeteor;  
+    
+    mpiRequest recvRq, sendRq;
+    for( int phase=1; phase < MPICommSize; phase++ ){
+        cout << "PHASE "  << phase - 1 << " OF " << MPICommSize -  1 << endl;
+
+        # SEND %
+        int MPIRankRecver = (MPIRank + phase)%MPICommSize;
+        cout << "HELLO FROM MPIRANK " << MPIRank << endl;
+        if(MPIRank < numMeteor){
+            Isend(processor(MPIRankRecver, Comm, sendRq), ThSmeteor);
+            cout << "SENDER: " << MPIRank << ", RECV: " << MPIRankRecver << endl;
+        }
+        
+        # RECV %
+        int MPIRankSender = (MPIRank - phase + MPICommSize)%MPICommSize;
+        cout << "MPIRank " << MPIRankSender << " IS SENDER OF " << MPIRank << endl;
+        if(MPIRankSender < numMeteor){
+            Irecv(processor(MPIRankSender, Comm, recvRq), ThSmeteor);
+            cout << "RECV: " << MPIRank << ", SENDER: " << MPIRankSender << endl;
+            mpiWait(recvRq); 
+        }
+
+    # MERGE  %
+    MAINThSmeteor = MAINThSmeteor + ThSmeteor;
+    }
+    
+
+    ThS = ThS + MAINThSmeteor;
+    mpiBarrier(Comm);
+}
+//
+
+*/

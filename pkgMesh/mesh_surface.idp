@@ -1,0 +1,294 @@
+load "msh3"
+load "mmg"
+/*include "MeshSurface.idp"*/
+
+//------------------------------------------------------------------
+// meshS generation
+//------------------------------------------------------------------
+
+/*
+func meshS Ellipsoide (real RX,real RY,real RZ,real h2D, real hS, int L,real Ox,real Oy,real Oz,int orientation){
+  // determine the number of vertices
+  real[int] arrR = [RX, RY, RZ]; real maxR = arrR.max;
+  int nbvx = 1e5;//int(ceil( 4 * pi * maxR^2 / h^2));
+
+  mesh  Th=square(10,20,[x*pi-pi/2,2*y*pi]);  //  $]\frac{-pi}{2},frac{pi}{2}[\times]0,2\pi[ $
+  //  a parametrization of a sphere 
+  func f1 = RX*cos(x)*cos(y);
+  func f2 = RY*cos(x)*sin(y);
+  func f3 = -RZ*sin(x);
+
+  //    partiel derivative 
+  func f1x = -RX*sin(x)*cos(y);   
+  func f2x = -RY*sin(x)*sin(y);
+  func f3x = -RZ*cos(x);
+
+  func f1y= -RX*cos(x)*sin(y);
+  func f2y= +RY*cos(x)*cos(y);
+  func f3y= 0;
+  
+  // the metric on the sphere  $  M = DF^t DF $
+  func m11=f1x^2+f2x^2+f3x^2;
+  func m21=f1x*f1y+f2x*f2y+f3x*f3y;
+  func m22=f1y^2+f2y^2+f3y^2;
+  
+  func perio=[[4,y],[2,y],[1,x],[3,x]];  // to store the periodic condition 
+  real hh=h2D;// hh  mesh size on unite sphere
+  real vv= 1/square(hh);
+
+  Th=adaptmesh(Th,m11*vv,m21*vv,m22*vv,IsMetric=1,periodic=perio,inquire=1);
+  Th=adaptmesh(Th,m11*vv,m21*vv,m22*vv,IsMetric=1,periodic=perio);
+  Th=adaptmesh(Th,m11*vv,m21*vv,m22*vv,IsMetric=1,periodic=perio);
+  int[int] ref=[0,L];  
+  
+  meshS  Smesh= movemesh23(Th,transfo=[f1,f2,f3],orientation=orientation,reftri=ref);
+
+  real hMin = 1e-1 * hS;
+  Smesh=mmgs(Smesh,hmin=hMin,hmax=hS,hgrad=8.0, mem=500);
+
+  // shift the mesh
+  Smesh = movemeshS(Smesh, 
+    //set the transformation of the grid
+    transfo = [
+      x + Ox, 
+      y + Oy, 
+      z + Oz
+      ],
+    // change the labels 
+    label = ref,
+    region = ref,
+    orientation = orientation);
+  return Smesh;
+}
+
+func real mod(real X, real Y){
+  if(X >= 0){
+    return X - floor(X/Y)*Y;
+  }else{
+    return X - ceil(X/Y)*Y;
+  }
+
+}
+
+// OUT OF FUNCTION !!!
+// www.geonaut.eu/published/2010_Gonzalez__Measurement_of_ARess_on_a_sphere_using_Fibonacci_and_latitude-longitude_lattices.pdf
+func meshS fiboSphere(real Rx, real Ry, real Rz, real hS, int L, int orientation){
+  
+  real goldenRatio = (1 + sqrt(5))/2;
+  
+  // determine the number of nodes
+  real[int] arrR = [Rx, Ry, Rz]; real maxR = arrR.max;
+
+  int numNode = int(ceil(4 * pi * maxR^2 / hS^2));
+
+  numNode += numNode % 2 ? 0 : 1;
+
+  int maxIter = int(floor(numNode/2));
+
+  // evaluate coordinates
+  real[int] lat(numNode), long(numNode);
+
+  real temp = 0;
+  for(int ind = -maxIter; ind <= maxIter; ind++){
+    lat[ind + maxIter] = asin((2.0 * ind) / (2 * maxIter + 1));
+    temp = mod(ind, goldenRatio) * 2 * pi / goldenRatio;
+    if(temp < -pi){temp += 2*pi;}
+    if(temp > pi){temp -= 2*pi;}  
+    long[ind + maxIter] = temp + pi;
+  }  
+  // triangulate
+  mesh Th = triangulate(lat, long);
+  //  a parametrization of a sphere 
+  func f1 = Rx*cos(x)*cos(y);
+  func f2 = Ry*cos(x)*sin(y);
+  func f3 = -Rz*sin(x);
+
+  //    partiel derivative 
+  func f1x = -Rx*sin(x)*cos(y);   
+  func f2x = -Ry*sin(x)*sin(y);
+  func f3x = -Rz*cos(x);
+
+  func f1y= -Rx*cos(x)*sin(y);
+  func f2y= +Ry*cos(x)*cos(y);
+  func f3y= 0;
+  
+  // the metric on the sphere  $  M = DF^t DF $
+  func m11=f1x^2+f2x^2+f3x^2;
+  func m21=f1x*f1y+f2x*f2y+f3x*f3y;
+  func m22=f1y^2+f2y^2+f3y^2;
+  
+  // func perio=[[4,y],[2,y],[1,x],[3,x]];  // to store the periodic condition 
+
+  // Th=adaptmesh(Th, m11*hS,m21*hS,m22*hS, periodic=perio, inquire=1);
+
+  int[int] ref=[0,L];  
+  
+  meshS Smesh= movemesh23(Th, transfo=[f1,f2,f3],orientation=orientation,reftri=ref);
+
+  Smesh = mmgs(Smesh, noswap=true, noinsert=true, nomove=true);
+
+  return Smesh;
+}
+*/
+// hS on unity sphere
+func bool refineSphere(string path, real hS){
+  real hSminLeb = 0.0584122;
+  meshS ThS = readmeshS(path+"/meshSLeb/"+string(hSminLeb)+".mesh");   
+  // refine mesh if needed
+  if(hS < hSminLeb){
+    real hMin = 1e-2 * hS;
+    ThS = mmgs(ThS, hmax=hS, hgrad=6.0, mem=9999);
+    savemesh(ThS, path+"/meshS/"+string(ThS.hmax)+".mesh");
+    return true;
+  }
+  return false;
+}
+
+//------------------------------------------------------------------
+// meshS unity load
+//------------------------------------------------------------------
+
+// here are the loading function for the dir meshS
+func real[int] LISTxARes(){
+  int numElem = exec("num=\"$( ls "+meshSPATH+"*.ARes | grep -Po \"\\d*(?=\.ARes)\" )\"; exit ${num}")/256;
+  exec("cd "+meshSPATH+"; ls");
+  ifstream ifs(meshSPATH+numElem+".ARes");
+  real[int] arr(numElem); 
+  for [i, elem : arr]{ifs >> elem;}
+  return arr;
+}
+
+func int CHOOSExARes(real[int] & sortedList, real ARes){
+  int minInd = 0;
+  while(sortedList[minInd] > ARes && minInd < (sortedList.n-1)){minInd += 1;}
+  /*
+  cout << "----- SORTED LIST ------" << endl;
+  cout << sortedList << endl;
+
+  cout << "----- ARes ------" << endl;
+  cout << ARes << endl;
+
+  cout << "----- minInd ------" << endl;
+  cout << minInd << endl;
+  */
+  return minInd;
+}
+
+// here are the loading function for the dir meshS
+func real[int] LISTxhS(){
+  int numElem = exec("num=\"$( ls "+meshSPATH+"*.resol | grep -Po \"\\d*(?=\.resol)\" )\"; exit ${num}")/256;
+  exec("cd "+meshSPATH+"; ls");
+  ifstream ifs(meshSPATH+numElem+".resol");
+  real[int] arr(numElem); 
+  for [i, elem : arr]{ifs >> elem;}
+  return arr;
+}
+
+func int CHOOSExhS(real[int] & sortedListhS, real hS){
+  int minInd = 0;
+  while(sortedListhS[minInd] > hS && minInd < (sortedListhS.n-1)){minInd += 1;}
+  return minInd;
+}
+
+func meshS LOADxind(int ind){
+  return readmeshS(meshSPATH+string(ind+1)+".mesh");
+}
+
+//------------------------------------------------------------------
+// meshS manuipulation
+//------------------------------------------------------------------
+
+func bool formMeshS(meshS & ThS, real[int] Axis, int L, int orientation){
+
+  /* set the label change */
+  int[int] changeLabel = [0, L];
+  
+  ThS = movemeshS(ThS, 
+    /* set the transformation of the grid */ 
+    transfo = [
+      (Axis[0]*x), 
+      (Axis[1]*y), 
+      (Axis[2]*z)
+    ],
+    /* change the labels */
+    label = changeLabel,
+    region = changeLabel,
+    orientation = orientation
+  );
+
+  return true;
+}
+
+func bool formMeshS2(meshS & ThS, real[int] Axis, int L, int orientation, int region){
+
+  /* set the label change */
+  int[int] changeLabel = [0, L];
+  int[int] changeRegion = [0, region];
+
+  ThS = movemeshS(ThS, 
+    /* set the transformation of the grid */ 
+    transfo = [
+      (Axis[0]*x), 
+      (Axis[1]*y), 
+      (Axis[2]*z)
+    ],
+    /* change the labels */
+    label = changeLabel,
+    region = changeRegion,
+    orientation = orientation
+  );
+
+  return true;
+}
+
+func bool refineMeshS(meshS & ThS, int numNode, real[int] Axis, real hS, bool skipmmgs){
+  /* get the number of nodes of the particle that correspond to this radius */
+  real h = sqrt(4 * pi * (Axis.max)^2/numNode);
+    
+  // refine mesh if needed
+  if( (hS < h) && !skipmmgs){
+    real hMin = 1e-2 * hS;
+    ThS = mmgs(ThS, hmax=hS, hgrad=8.0, mem=500);
+  }
+  return true;
+}
+
+func bool shiftMeshS(meshS & ThS, real[int] Coord, int L, int orientation){
+  /* set the label change */
+  int[int] changeLabel = [0, L];
+  // shift the mesh
+  ThS = movemeshS(ThS, 
+    /* set the transformation of the grid */ 
+    transfo = [
+      (x + Coord[0]), 
+      (y + Coord[1]), 
+      (z + Coord[2])
+      ],
+    /* change the labels */
+    label = changeLabel,
+    region = changeLabel,
+    orientation = orientation
+  );
+
+  return true;
+}
+
+func bool formshiftLebedev(meshS & ThS, real[int] Axis, real[int] Coord, int L, int orientation){
+  /* set the label change */
+  int[int] changeLabel = [0, L];
+  // shift the mesh
+  ThS = movemeshS(ThS, 
+    /* set the transformation of the grid */ 
+    transfo = [
+      Axis[0] * x, 
+      Axis[1] * y, 
+      Axis[2] * z
+      ],
+    /* change the labels */
+    label = changeLabel,
+    region = changeLabel,
+    orientation = orientation
+  );
+
+  return true;
+}

@@ -1,0 +1,14 @@
+CONFIG-FILE FORMAT
+
+{name}_{numberParticles}_{numberOfIterations}.edp
+
+name = String
+numberParticles = max number of particles
+numberOfIterations = Int
+
+SUM=""; 
+for file in $( ls *.out ); do 
+    SUM="$SUM $( grep -P "global numbering created " "$file" | awk '{if (NR % 1 == 0); print $0 }' | grep -Po "(?<=\()[^\)]*" | awk 'BEGIN{a=0}{a += $2}END{ if(NR!=0) print a/NR}' )"
+done
+
+echo $SUM | awk 'BEGIN{sum=0}{sum+=$0}END{print sum/NR}'

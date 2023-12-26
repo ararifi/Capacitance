@@ -1,0 +1,570 @@
+// -----------------------------------------------------------------------------
+// MACROS AND FUNDAMENTALS
+// -----------------------------------------------------------------------------   
+
+real MINDISTFACTOR = 0.1;
+
+// macro for periodic boundary along one axis for spheres with radius r
+macro div(n, d) int((n)/(d)) //
+
+// axis periodic boundary
+macro apb(axis, ind) axis - 
+    sign(axis) * (boxSize-2*R[ind]) * div(sign(axis) * axis + boxSize/2.0 - R[ind], boxSize-2*R[ind]) //
+
+macro isSetMPI(arg)if(arg==0){mpiBarrier(mpiCommWorld); exit(-1);} //
+
+macro collapse()
+    {
+
+        int[int] notCommit(0);
+
+        int oldNumMeteor = numMeteor;
+
+        numMeteor = Commit.sum;
+
+        /* copy and trancuate */
+        real[int] CpR = R, CpPos = Pos;
+        R.resize(numMeteor); Pos.resize(3 * numMeteor);
+        
+        /* swap commited positions */
+        int cnt = 0;
+        for [ind, commit : Commit]{
+            if( commit == 1 ){ 
+                R[cnt] = CpR[ind];
+                Pos(3*cnt : 3*(cnt+1)-1) = CpPos(3*ind : 3*(ind+1)-1);
+                cnt++;
+            }else{
+                notCommit = [ notCommit, ind ];
+
+                IFMACRO(SPECTRUE, TRUE)
+                if( cnt < numDroplet ){ numDroplet -= 1; }else{ numIce -= 1; }
+                ENDIFMACRO
+            }
+        } 
+
+        CommitStatic.resize(Commit.n); CommitStatic = Commit;
+
+        Commit.resize(numMeteor); Commit = 1;
+
+        cout << "collapse done \n" << (oldNumMeteor - numMeteor) << " Meteor(s) removed" << endl;    
+        cout << notCommit << endl;
+    }
+//
+
+IFMACRO(SPECTRUE, TRUE)
+macro checkLength(ind, num)
+    if(ind < numDroplet - 1){
+        if(num > numDroplet+ind){cout << "too many particles for Droplets at index ind" << endl;}
+    }else{
+        if(num > numIce+ind){cout << "too many particles for Ice at index ind" << endl;}
+    }
+//
+ENDIFMACRO
+
+// -----------------------------------------------------------------------------
+// PDF's
+// -----------------------------------------------------------------------------
+
+real euler = exp(1.0);
+
+func real pdfExp(real r, real lambda){ return lambda * exp(-lambda * r); }
+
+func real pdfNormal(real r, real mu, real sigma){ return 1.0/(sqrt(sigma^2 * 2.0 * pi)) * exp(-0.5 * (r - mu)^2 / sigma^2); }
+
+func real pdfNormal(real r){ return pdfNormal(r, 0, 1); }
+
+func real distExp(real lambda){ /* r ~ U(0,1) */ return -1.0/lambda * log(randreal3()); }
+
+func real distNormal(){
+ 
+    real C = sqrt( 2 * euler / pi );
+
+    real r, u, sign;
+    real px, py;
+
+    while(true){
+        sign = randreal2() < 0.5 ? -1 : 1;
+
+        r = distExp(1); px = 2 * pdfNormal(r, 0, 1); py = pdfExp(r, 1);
+
+        u = randreal3();
+
+        if( u <= px / (C * py) ){ return sign * r; }
+    }
+
+}
+func real distNormal(real mu, real sigma){ /* COV only diagonal */ return sigma * distNormal() + mu; }
+
+func real distLogNormal(real mu, real sigma){ /* COV only diagonal */ return exp(distNormal(mu, sigma)); }
+
+
+// -----------------------------------------------------------------------------
+// SPATIAL MANIPULATION GENERAL
+// -----------------------------------------------------------------------------
+
+func bool commitIt(int ind){Commit[ind]=1; return true;}
+
+func bool uncommitIt(int ind){Commit[ind]=0; return true;}
+
+func int[int] isOK2(int ind1){    
+    
+    /* too near particles are not considered for the setting */
+
+    /* considered for the setting */
+    int[int] status(3);
+    bool check = true;
+
+    real[int] dist(3), newPos(3);
+    newPos = Pos(3*ind1 : 3*ind1 + 2);  
+    real dist2; real dist2OK;
+    for(int ind2 = 0; ind2 < Pos.n/3; ind2++){
+        status[1] = ind1; status[2] = ind2;
+        // if same index OR the position of the particle
+        // @ ind2 is not set continue
+        if( (ind2 == ind1) || (Commit[ind2] != 1) ){continue;}
+
+        dist = Pos(3*ind2 : 3*ind2 + 2) - newPos; dist2 = dist'*dist;
+        
+        dist2OK = ((1.0 + MINDISTFACTOR) * (R[ind1] + R[ind2]))^(2.0);
+        
+        if(dist2 <= dist2OK){ status[0] = 0; return status; }
+    }
+    status[0] = 1; return status;
+}
+
+func int[int] isOK(int ind1){    
+    /* considered for the setting */
+    int[int] status(3);
+    bool check = true;
+
+    real[int] dist(3), newPos(3);
+    newPos = Pos(3*ind1 : 3*ind1 + 2);  
+    real dist2; 
+    for(int ind2 = 0; ind2 < Pos.n/3; ind2++){
+        status[1] = ind1; status[2] = ind2;
+        // if same index OR the position of the particle
+        // @ ind2 is not set continue
+        if( (ind2 == ind1) || (Commit[ind2] != 1) ){continue;}
+     //   dist[0] = Pos[3*ind2] - Pos[0];
+     //   dist[1] = Pos[3*ind2+1] - Pos[1];
+     //   dist[2] = Pos[3*ind2+2] - Pos[2];
+        dist = Pos(3*ind2 : 3*ind2 + 2) - newPos;
+        dist2 = dist'*dist;
+        if(dist2 <= (R[ind1] + R[ind2])^2){
+            status[0] = 0;
+            return status;
+        }
+    }
+    status[0] = 1; return status;
+}
+
+func bool setPos(int ind, real[int] newPos, bool veb){
+    {
+        Pos[3*ind] = apb(newPos[0], ind);
+        Pos[3*ind + 1] = apb(newPos[1], ind);
+        Pos[3*ind + 2] = apb(newPos[2], ind);
+    }    
+    int[int] status = isOK(ind);
+    if(status[0]==1){
+        // set the Commit array
+        commitIt(ind); 
+        return true;
+    }
+    if(veb){cout << "collison! of particle " + status[1] + " with " + status[2] + " cannot set position" << endl;}
+    return false;   
+}
+
+func bool setPos2(int ind, real[int] newPos, bool veb){
+    {
+        Pos[3*ind] = apb(newPos[0], ind);
+        Pos[3*ind + 1] = apb(newPos[1], ind);
+        Pos[3*ind + 2] = apb(newPos[2], ind);
+    }    
+    int[int] status = isOK2(ind);
+    if(status[0]==1){
+        // set the Commit array
+        commitIt(ind); 
+        return true;
+    }
+    if(veb){cout << "collison! of particle " + status[1] + " with " + status[2] + " cannot set position" << endl;}
+    return false;   
+}
+
+func bool forceSetPos(int ind, real[int] newPos){
+    {
+        Pos[3*ind] = apb(newPos[0], ind);
+        Pos[3*ind + 1] = apb(newPos[1], ind);
+        Pos[3*ind + 2] = apb(newPos[2], ind);
+    }    
+    int[int] status = isOK(ind);
+    bool isCol = !(status[0]==1); 
+    while(isCol){
+        uncommitIt(status[2]);
+        status = isOK(ind); 
+        isCol = !(status[0]==1);
+    }  
+    commitIt(ind); return true;
+} 
+
+
+// -----------------------------------------------------------------------------
+// SPATIAL MANIPULATION SPECIFIC
+// -----------------------------------------------------------------------------
+
+// distribute the particles evenly on a sphere by radius "r"
+// here we use the thomson problem
+// https://www-wales.ch.cam.ac.uk/~wales/CCD/Thomson/table.html
+// Structure and Dynamics of Spherical Crystals Characterised for the Thomson Problem, 
+// Phys. Rev. B, 74, 212101 (2006).
+func bool thomsonSphere(int offsetInd, int num, real[int] &  Mid, real r){
+
+    IFMACRO(SPECTRUE, TRUE)
+    // check the length of the given range
+    checkLength(offsetInd, num)
+    ENDIFMACRO
+
+    // load the thomson sphere
+    real[int] arr(3*num);
+    try{
+        ifstream io(pkgMeshDir+"/ThomsonFreeFem_xyz/"+string(num)+".xyz");
+        
+        // load io into array
+        io >> arr;
+    }catch(...){
+        cout << "thomson sphere: invalid number of particles" << endl;
+        return false;
+    }
+    
+    // set the particles    
+    real[int] temp(3);
+    for(int ind = 0; ind < num; ind++){
+        temp = r * arr(3*ind:(3*ind + 2)) + Mid;
+        if(!setPos(offsetInd + ind, temp, true)){return false;}
+    }
+
+    return true;
+}
+
+func bool setRandom(int ind, int dist, real pSphereSize){  
+    /*
+        IMPLEMENTED DISTRIBUTION FUNCTION 
+        (1) UNIFORM DISTRIBUTION
+    */
+    
+    // default values for rndSphereSize
+    real rndSphereSize = pSphereSize;
+    if(rndSphereSize == 0){rndSphereSize = boxSize;}
+
+    // measure the time
+    real cpu=clock();
+
+    // set state variable
+    bool state = false;
+
+    real[int] temp(3);
+    
+    // the random variable
+    real rnd;
+    while(!state){
+        real tempR2 = 3 * rndSphereSize^2; 
+        while(tempR2 > rndSphereSize^2){
+            for [i, elem : temp]{
+                
+                // set the distribution
+                if(dist == 1){
+                    rnd = rndSphereSize * (2*randreal2()-1);
+                }            
+                // std is uniform distribution: rnd = SphereSize * (2*randreal2()-1);
+                elem = apb(rnd, ind);
+            }
+            tempR2 = temp'*temp;
+        }
+
+        state = setPos2(ind, temp, false);
+        
+        if ((clock()-cpu) > 180){
+            cout << "INFO ( particle_manipulation.idp ): timeout (180s)" << endl; return false;
+        }        
+    }
+    return state;   
+}
+
+// only until 6 particles allowed
+func bool lessSphere(int offsetInd, int num, real[int] &  Mid, real r){
+    
+    IFMACRO(SPECTRUE, TRUE)
+    // check the length of the given range
+    checkLength(offsetInd, num)
+    ENDIFMACRO
+
+    real[int] SPHERE6 = [
+        1, 0, 0, 
+        -1, 0, 0,
+        0, 1, 0, 
+        0, -1, 0, 
+        0, 0, 1, 
+        0, 0, -1
+        ];
+
+    // -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-
+    // set the particles
+    // -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-    
+    
+    real[int] Temp(3), Coord(3);
+    for(int ind = 0; ind < num; ind++){
+        Coord = SPHERE6( (3*ind) : (3*ind+2) );
+        Temp = r * Coord + Mid;
+        if(!setPos(offsetInd + ind, Temp, true)){return false;}
+    }
+    return true;
+}
+
+// FOR NUMBERS BIGGER EQUAL THAN 12
+func bool isoSphere(int offsetInd, int num, int choice, real[int] &  Mid, real r){
+    IFMACRO(SPECTRUE, TRUE)
+    // check the length of the given range
+    checkLength(offsetInd, num)
+    ENDIFMACRO
+
+    // -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-
+    // load the iso sphere
+    // -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-    
+    
+    // get the av numbers
+    int numElem = exec("num=\"$( ls "+meshSPATH+"*.nv | grep -Po \"\\d*(?=\.nv)\" )\"; exit ${num}")/256;
+    exec("cd "+meshSPATH+"; ls");
+    ifstream ifs(meshSPATH+numElem+".nv");
+    real[int] arr(numElem); 
+    for [i, elem : arr]{ifs >> elem;}
+
+    // select a sphere
+    int minInd = 0;
+    while(arr[minInd] < choice && minInd < (arr.n-1)){minInd += 1;}
+
+    // read mesh
+    meshS ThS = readmeshS(meshSPATH+string(minInd+1)+".mesh");
+
+    // -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-
+    // set the particles
+    // -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-    
+    
+    real[int] Temp(3), Coord(3);
+    for(int ind = 0; ind < num; ind++){
+        Coord[0] = ThS(ind).x;
+        Coord[1] = ThS(ind).y;
+        Coord[2] = ThS(ind).z;
+
+        Temp = r * Coord + Mid;
+        if(!setPos(offsetInd + ind, Temp, true)){return false;}
+    }
+    return true;
+}
+
+func bool setGrid(int offsetInd, int num, real[int] & Mid, real sizeLBox){
+    
+    if(num == 0){return true;}
+
+    // if only one particle set Mid Point as Position
+    if(num == 1){return setPos(offsetInd, Mid, true);}
+
+    IFMACRO(SPECTRUE, TRUE)
+    // check the length of the given range
+    checkLength(offsetInd, num)
+    ENDIFMACRO
+    
+    // create the array for the grid
+    real[int] a(3*num);
+
+    // get the dimension of lattice box
+    int dimLBox = int(ceil(num^(1.0/3.0)));
+
+    // get equidistant distances of the particles
+    real eqSize = sizeLBox / (dimLBox - 1);
+
+    // set the offset of the particles, such that the mid point of the
+    // grid is at the @ center 
+    real[int] offset(3); offset = - eqSize  * ( floor(dimLBox/2.0) - ((dimLBox+1) % 2)/2.0  );
+    // * ((round(dimLBox/2)-1) + ((dimLBox+1) % 2)/2.0); 
+    
+    offset = offset + Mid; 
+    // set the particles
+    real[int] temp(3);
+    for(int ind = 0; ind < num; ind++){
+        temp[0] = eqSize * (ind % dimLBox) + offset[0];
+        temp[1] = eqSize * (div(ind, dimLBox) % dimLBox) + offset[1];
+        temp[2] = eqSize * (div(ind, dimLBox * dimLBox) % dimLBox) + offset[2];
+        if(!setPos(offsetInd + ind, temp, true)){return false;}
+    }
+
+    return true;
+}
+
+// get cubic death zone from mid point
+func real getDeathZone(int deathInd, int num, real sizeLBox){
+
+    if(num == 0){return 0;}
+
+    IFMACRO(SPECTRUE, TRUE)
+    // check the length of the given range
+    checkLength(offsetInd, num)
+    ENDIFMACRO
+    
+    int dimLBox = int(ceil(num^(1.0/3.0))); real eqSize = sizeLBox / (dimLBox - 1);
+
+    if( (num % 2) == 0 ){ return deathInd * eqSize; } return  eqSize * (deathInd + 1.0/2.0);
+}
+
+func bool setGrid(real deathZone, int offsetInd, int num, real[int] & Mid, real sizeLBox){
+    
+    if(num == 0){return true;}
+
+    // if only one particle set Mid Point as Position
+    if(num == 1){return setPos(offsetInd, Mid, true);}
+
+    IFMACRO(SPECTRUE, TRUE)
+    // check the length of the given range
+    checkLength(offsetInd, num)
+    ENDIFMACRO
+    
+    // create the array for the grid
+    real[int] a(3*num);
+
+    // get the dimension of lattice box
+    int dimLBox = int(ceil(num^(1.0/3.0)));
+
+    // get equidistant distances of the particles
+    real eqSize = sizeLBox / (dimLBox - 1);
+
+    // set the offset of the particles, such that the mid point of the
+    // grid is at the @ center 
+    real[int] offset(3); offset = - eqSize  * ( floor(dimLBox/2.0) - ((dimLBox+1) % 2)/2.0  );
+    // * ((round(dimLBox/2)-1) + ((dimLBox+1) % 2)/2.0); 
+    
+    offset = offset + Mid; 
+    // set the particles
+    real[int] temp(3); bool isDeath = true;
+    for(int ind1 = 0; ind1 < num; ind1++){
+        temp[0] = eqSize * (ind1 % dimLBox) + offset[0];
+        temp[1] = eqSize * (div(ind1, dimLBox) % dimLBox) + offset[1];
+        temp[2] = eqSize * (div(ind1, dimLBox * dimLBox) % dimLBox) + offset[2];
+        for [ ind2, elem : temp ]{ 
+            if( abs( elem - Mid[ind2] ) > deathZone  ){ isDeath = false; } 
+        }
+        /*cout << isDeath << endl;*/
+        if( !isDeath ){ if(!setPos(offsetInd + ind1, temp, true)){ return false; }} 
+        isDeath = true; 
+    }
+    return true;
+}
+
+func bool setGrid2(real deathZone, int offsetInd, int num, real[int] & Mid, real sizeLBox){
+    
+    if(num == 0){return true;}
+
+    // if only one particle set Mid Point as Position
+    if(num == 1){return setPos(offsetInd, Mid, true);}
+
+    IFMACRO(SPECTRUE, TRUE)
+    // check the length of the given range
+    checkLength(offsetInd, num)
+    ENDIFMACRO
+    
+    // create the array for the grid
+    real[int] a(3*num);
+
+    // get the dimension of lattice box
+    int dimLBox = int(ceil(num^(1.0/3.0)));
+
+    // get equidistant distances of the particles
+    real eqSize = sizeLBox / (dimLBox - 1);
+
+    // set the offset of the particles, such that the mid point of the
+    // grid is at the @ center 
+    real[int] offset(3); offset = - eqSize  * ( floor(dimLBox/2.0) - ((dimLBox+1) % 2)/2.0  );
+    // * ((round(dimLBox/2)-1) + ((dimLBox+1) % 2)/2.0); 
+    
+    offset = offset + Mid; 
+    // set the particles
+    real[int] temp(3); bool isDeath = false;
+    for(int ind = 0; ind < num; ind++){
+        temp[0] = eqSize * (ind % dimLBox) + offset[0];
+        temp[1] = eqSize * (div(ind, dimLBox) % dimLBox) + offset[1];
+        temp[2] = eqSize * (div(ind, dimLBox * dimLBox) % dimLBox) + offset[2];
+        
+        for [ ind, elem : temp ]{ if( abs( elem - Mid[ind] ) < deathZone ){ isDeath = true; } }
+        
+        if( !isDeath ) if(!setPos(offsetInd + ind, temp, true)){ return false; } isDeath = false; 
+    }
+
+    return true;
+}
+
+
+
+// -----------------------------------------------------------------------------
+// ARRAY MANIPULATION
+// -----------------------------------------------------------------------------
+
+func bool setAC(real[int] & AC, real setA, real setC){
+    if(AC.n%2!=0){
+        return false;
+    }else{
+        for(int i = 0; i < AC.n/2; i++){
+            AC(2*i) = setA; AC(2*i + 1) = setC; 
+        }
+        return true;
+    }
+}
+
+func real[int] createArr(int n, real val){real[int] Arr(n); Arr = val; return Arr;}
+
+// -----------------------------------------------------------------------------
+// SCALING FUNCTIONS
+// -----------------------------------------------------------------------------
+
+IFMACRO(SPECTRUE, FALSE)
+// jumpsize of scaling
+func real scJump(int jumpInd){return jumpInd * int(simInd / jumpInd);}
+
+// scaling of unity
+func real sc1(int jumpInd, real phase){
+    if(!simMaxInd){
+        return 0;
+    }else{
+        return (scJump(jumpInd) + phase) / (simMaxInd-1);
+    }
+}
+ 
+// scaling of cosinus
+func real scCos(int jumpInd, real phase){return cos(2 * pi * sc1(jumpInd, phase));}
+
+// scaling of sinus
+func real scSin(int jumpInd, real phase){return sin(2 * pi * sc1(jumpInd, phase));}
+
+// jumpInd for simultanous scaling in r and phi direction, number of rotation 
+// is proportional to the distance to the center
+func int scJumpIndShiftRot(){
+    // first evaluate number of spheres at given simMaxInd
+    int numShell = 0; 
+    int cnt;
+    while(cnt < simMaxInd){
+        cnt = 0;
+        for(int i = 0; i < numShell; i++){
+            cnt += int(floor(numShell/(i + 1)));
+        }
+        numShell ++;
+    }
+    // get shell ind corresponding to simInd and return the number of points
+    // on the corresponding shell for the jumpInd
+    int sumInd = 0, shellInd = 0;
+    int numPointShell = 0;
+    while(sumInd < simInd){
+        numPointShell = int(floor(numShell/(shellInd + 1)));
+        sumInd += numPointShell; 
+        shellInd ++;
+    }
+    return numPointShell;
+}   
+
+ENDIFMACRO
+// -----------------------------------------------------------------------------

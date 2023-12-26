@@ -1,0 +1,217 @@
+include "getARGV.idp"
+load "shell"
+
+// -----------------------------------------------------------------
+// (-1) MAPPING INDEX -> INDICES
+// -----------------------------------------------------------------
+
+int DIMDIV = 1;
+
+macro SETVAR(X, ARRPLAIN)
+    {   
+        real[int] V#X = ARRPLAIN;
+        int IDX#X = int( (simInd / DIMDIV) % V#X.n );
+        X = V#X[ IDX#X ];
+        DIMDIV = DIMDIV * V#X.n;
+    }
+//
+
+macro SETVAROSC(X, ARRPLAIN, REPEAT)
+    {  
+        real[int] V#X = ARRPLAIN;
+        int IDX#X = int( (simInd / REPEAT) % V#X.n );
+        X = V#X[ IDX#X ];
+    }
+//
+
+
+macro SETVARINT(X, ARRPLAIN)
+    {   
+        int[int] V#X = ARRPLAIN;
+        int IDX#X = int( (simInd / DIMDIV) % V#X.n );
+        X = V#X[ IDX#X ];
+        DIMDIV = DIMDIV * V#X.n;
+    }
+//
+
+macro SETVARBYOTHER(X, ARRPLAIN, SIZEOTHER)
+    {   
+        int DIVDIVBACK = int( DIMDIV/SIZEOTHER );
+        int IDX#XOTHER = int( (simInd / DIVDIVBACK ) % SIZEOTHER );
+        
+        real[int] V#X = ARRPLAIN;
+        X = V#X[ IDX#XOTHER ];
+    }
+//
+
+macro SETVARINTBYOTHER(X, ARRPLAIN, SIZEOTHER)
+    {   
+        int DIVDIVBACK = int( DIMDIV/SIZEOTHER );
+        int IDX#XOTHER = int( (simInd / DIVDIVBACK ) % SIZEOTHER );
+        
+        int[int] V#X = ARRPLAIN;
+        X = V#X[ IDX#XOTHER ];
+    }
+//
+
+// -----------------------------------------------------------------
+// (0) FLAGS
+// -----------------------------------------------------------------
+
+// Indices
+
+int simInd = getARGV("-S", -1);
+int meshInd = getARGV("-M", -1); 
+int jobInd = getARGV("-J", -1); int currInd = jobInd;
+
+// Indices for all 
+
+int simMaxInd = getARGV("-simMaxInd", 0);
+
+int maxMeteor = getARGV("-maxMeteor", 0);
+
+int mainMeteorInd = getARGV("-mainMeteorInd", 0); // <- index for the effective model
+
+// Data-Output
+
+string simulationName = getARGV("-simName", "default");
+
+string outputDir = getenv("p_ffOutput"); if (outputDir==""){exit(3);}
+
+string dataDir = outputDir+"/data";
+
+// Mesh-Input
+
+string ffpkgPath = getenv("p_ffpkg");
+
+string pkgMeshDir = ffpkgPath + "/pkgMesh";
+
+string meshSPATH = pkgMeshDir+"/meshSicosphere/meshS/";
+
+// Mesh-Output
+
+string meshName = getARGV("-meshName",  simulationName);
+
+string meshDir = getenv("p_ffMesh"); if (meshDir==""){exit(3);}
+
+string meshPath = meshDir + "/" + meshName  + ".mesh" + meshInd;
+
+
+
+// -----------------------------------------------------------------
+// (1) STD-PARAMETERS
+// -----------------------------------------------------------------
+         
+// ----- MPI -----
+mpiComm Comm(mpiCommWorld, 0, 0);
+int MPICommSize = mpiSize(Comm);
+int MPIRank = mpiRank(Comm);
+
+// ----- IS PHYSICAL PROBLEM -----
+macro SPECTRUE()FALSE//
+
+// -----------------------------------------------------------------
+// (2) BOX
+// -----------------------------------------------------------------
+
+// ----- SPATIAL & NUMERICAL (center sits on [0, 0, 0]^t) -----
+real boxSize = 1000;
+
+// numElem of one axis
+int boxNumElem = 1;
+
+// resolution of box
+real BOX = 0;
+
+// -----------------------------------------------------------------
+// (3) GENERAL CONFIG
+// -----------------------------------------------------------------
+
+// ----- SOLVER OPTION ------
+
+real solverEps = 1e-6;
+
+// ----- SURFACE MESH -----
+
+// mesh size on meteor surface -> OLD, not used any more
+real hS = 1e-1;
+
+// surface residuen of integral over unity
+real ARes = 1e-1; real[int] AResVec;
+
+real RMinARes = 1e-1; // SCALING SHOULD BE STOPPED THERE
+
+real DistFactorARes = 1; // SCALING IN DEP. OF DISTANCE
+
+int DOsfc = 0;
+
+/* FOR DOsfc == 5 */
+real[int] AResByDist; 
+
+// ----- TETGEN MESH -----
+
+string addSwitch = "";
+
+// radius edge radius for the tetgen mesh3
+real ratioRadiusEdge = 1.6;
+
+real minDihedralAngle = 18.0;
+
+
+// tetgen constraint 
+/*
+
+DOh2STet == 0 : no constraint on surface 
+
+DOh2STet == 1 : const constraint on surface given by ARes * FINEFACTOR 
+
+DOh2STet == 2 : constraint on surface given by ARes * FINEFACTOR * R^2
+
+DOh2STet == 3 : constraint on surface given by 
+                CHOOSExARes[ind] * FINEFACTOR * R^2
+
+*/
+real FINEFACTOR = 0.8;
+
+int DOh2STet = 3;
+
+
+// ---------------------------------------------------------------
+// (4) CONFIGURATE 
+// -----------------------------------------------------------------
+
+real[int] R, Pos; 
+int[int] Commit, CommitStatic;
+int numMeteor;
+
+// #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
+
+// fill the arrays: MACRO like functions!!!
+// macro isSet is also included there
+include "pkgMesh/particle_manipulation.idp"
+include "simConfig.idp"
+
+config
+
+collapse
+
+// -----------------------------------------------------------------
+// (3.5) UPDATE GENERAL CONFIG
+// -----------------------------------------------------------------
+
+real maxVol = boxSize^3;
+
+// ---------------------------------------------------------------
+// (5) GLOBAL VARIABLES FOR RECORD
+// -----------------------------------------------------------------
+
+// ----- GLOBAL VARIABLE FOR MESH PROPERTIES -----
+real[int] CHOICExARes(R.n);
+
+real[int] CHOICExh2STet(R.n);
+
+// #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
+// at the end we have to check if all meteors was set
+for [i, elem : Commit]{if(elem!=1){cout << "not all particles was set" << endl; exit(-1);}}
+
+//exit(1);

@@ -1,0 +1,90 @@
+include "getARGV.idp"
+load "shell"
+
+// -----------------------------------------------------------------
+// (0) FLAGS
+// -----------------------------------------------------------------
+
+// Indices
+
+int meshInd = getARGV("-M", -1); 
+int jobInd = getARGV("-J", -1); int currInd = jobInd;
+
+// Indices for all 
+
+int simMaxInd = getARGV("-simMaxInd", 0);
+
+int maxMeteor = getARGV("-maxMeteor", 0);
+
+int mainMeteorInd = getARGV("-mainMeteorInd", 0); // <- index for the effective model
+
+// Data-Output
+
+string simulationName = getARGV("-simName", "default");
+
+string outputDir = getenv("p_ffOutput"); if (outputDir==""){exit(3);}
+
+string dataDir = outputDir+"/data";
+
+// Mesh-Input
+
+string ffpkgPath = getenv("p_ffpkg");
+
+string pkgMeshDir = ffpkgPath + "/pkgMesh";
+
+string meshSPATH = pkgMeshDir+"/meshSicosphere/meshS/";
+
+// Mesh-Output
+
+string meshName = getARGV("-meshName",  simulationName);
+
+string meshDir = getenv("p_ffMesh"); if (meshDir==""){exit(3);}
+
+string meshPath = meshDir + "/" + meshName  + ".mesh" + meshInd;
+
+// -----------------------------------------------------------------
+// (1) STD-PARAMETERS
+// -----------------------------------------------------------------
+         
+// ----- MPI -----
+mpiComm Comm(mpiCommWorld, 0, 0);
+int MPICommSize = mpiSize(Comm);
+int MPIRank = mpiRank(Comm);
+
+// ----- IS PHYSICAL PROBLEM -----
+macro SPECTRUE()FALSE//
+
+// ---------------------------------------------------------------
+// (2) SOLVER PARAMETERS
+// -----------------------------------------------------------------
+
+real solverEps = 1e-7;
+
+
+// ---------------------------------------------------------------
+// (3) READ CONFIGURATION FROM FILE
+// -----------------------------------------------------------------
+
+real[int] R, Pos;
+int numMeteor;
+
+{
+string outputDirMesh = getenv("p_ffOutputMesh"); if (outputDirMesh==""){exit(3);}
+
+string dataDirMesh = outputDirMesh+"/data";
+
+/* LOAD FILES */
+string radPath = dataDirMesh+"/rad.log" + meshInd;
+ifstream radIFS(radPath);
+
+string posPath = dataDirMesh+"/pos.log" + meshInd;
+ifstream posIFS(posPath);
+
+/* RESIZE */
+radIFS >> numMeteor; radIFS.seekg(0);
+R.resize(numMeteor); Pos.resize(3 * numMeteor);
+
+/* LOAD DATA */
+radIFS >> R; posIFS >> Pos;
+}
+
