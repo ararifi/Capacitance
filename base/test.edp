@@ -1,0 +1,26 @@
+// Define the mesh
+mesh Th = square(10, 10);
+
+// Define the finite element space
+fespace Vh(Th, P1);
+Vh u, v;
+
+// Define the bilinear form
+varf a(u, v) = int2d(Th)(
+    dx(u)*dx(v) + dy(u)*dy(v)
+);
+
+// Define the linear form
+varf l(u, v) = int2d(Th)(
+    1*v
+);
+
+// Define the matrix and right-hand side
+matrix A = a(Vh, Vh);
+real[int] b = l(0, Vh);
+
+// Solve the system
+u[] = A^-1*b;
+
+// Plot the solution
+plot(u, fill=true);

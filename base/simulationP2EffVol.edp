@@ -27,14 +27,14 @@ StartE(0)
 
 // --- FreeFEM ---
 load "msh3"
-load "tetgen2"
+load "tetgen"
 load "medit"
 load "PETSc"
 load "iovtk"
 include "MeshSurface.idp"
 macro dimension()3//
 macro partitioner()parmetis//
-include "macro_ddm2.idp"
+include "macro_ddm.idp"
 
 // --- USER DEFINED ---
 include "configRun.edp"
