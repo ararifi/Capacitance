@@ -11,7 +11,7 @@ Objects: array of meshS
 Pos: array of real
 Theta: array of int
 */
-load "tetgen"
+load "tetgen2"
 
 //-------------------------------------------------------
 // SETTINGS
@@ -27,7 +27,7 @@ real maxVol = boxSize^3;
 string addSwitch = "";
 
 // radius edge radius for the tetgen mesh3
-real ratioRadiusEdge = 1.6; // default 1.6
+real ratioRadiusEdge = 1.4; // default 1.6
 
 real minDihedralAngle = 18.0;
 
