@@ -1,0 +1,104 @@
+// --- FreeFEM ---
+load "PETSc"
+macro dimension()3//
+macro partitioner()parmetis//
+include "macro_ddm.idp"
+
+// --- USER DEFINED ---
+include "helpers.idp"
+
+// ----- FINITE ELEMENT SPACE -----
+func Pk = P2;
+
+// ----- QUADRATURE FORMULAR -----
+macro QFV()qfV5//
+macro DQFV()qfV2//
+macro QFT()qf2pT//
+
+// ----- ACCURACY -----
+real solverEps = 1e-6;
+
+
+// -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-
+// INPUT
+// meshPath: path to mesh
+// cardTheta: number of conductor-groups
+// outputDir: path to output directory
+// currInd: index of current simulation used in ensemble simulations
+
+// GLOBAL SETTINGS
+// Pk: Type Finite element space
+// QFV: Quadrature formula for volume integrals
+// DQFV: Quadrature formula for volume integrals, lower order
+// QFT: Quadrature formula for surface integrals
+
+// GLOBAL VARIABLES
+// Th: Mesh
+// ThNo: Mesh without overlap
+// part: Partition of mesh
+// n2o: Map from new (PETSc) indexing to old one
+// Vh: Finite element space
+// uh: Finite element function, solution with 0 Dirichlet boundary conditions
+// wh: Finite element function, on the boundary otherwise 0
+// A: Stiffness matrix
+// U: Vector of solutions uh; for each conductor-group theta; size: cardTheta 
+// W: Vector of solutions wh; for each conductor-group theta; size: cardTheta
+// L: Vector of stiffness matrix entries on boundary; for each conductor-group theta; size: cardTheta
+
+
+
+// -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-
+// (0) MESH 
+// -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-
+
+// read mesh
+mesh3 ThNo, Th = readmesh3(meshPath);
+
+fespace Ph(Th, P0);
+Ph part;
+
+// distribute overlapped mesh to the other processeors
+buildDmesh(Th)
+
+createPartition(Th, part[], P0)
+
+int[int] n2o;
+ThNo = trunc(Th, abs(part - 1.0) < 1e-1, new2old = n2o);
+
+// -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-
+// (1) DEFINING
+// -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-
+
+macro dofAll()Vh.ndof * cardTheta//// dof of FEM * number of conductor-groups
+
+fespace Vh(Th, Pk);// Finite element space
+
+Vh uh; real[int] U(dofAll);// Solution function and vector
+
+Vh wh; real[int] W(dofAll), L(dofAll);// Boundary function and vecotrs
+
+Mat A(Vh.ndof);// Stiffness matrix
+
+// -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-
+// (2) SOLVING AND FILLING
+// -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-
+
+fillA // fill stiffness matrix
+
+for( int theta = 0; theta < cardTheta; ++theta ){ fillWL(theta) } // fill boundary vectors
+
+for( int theta = 0; theta < cardTheta; ++theta ){ solveU(theta) } // solve for each conductor-groups
+
+// -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-
+// (3) COMUTING CAPACITANCE
+// -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-
+
+ofstream streamLogCap( outputDir + "/cap.log" + currInd ); 
+streamLogCap.precision(16);
+for( int theta1 = 0; theta1 < cardTheta; ++theta1 ){ 
+    real[int] Cap( cardTheta - theta1 );
+    for( int theta2 = theta1; theta2 < cardTheta; ++theta2 ){ 
+        Cap[ theta1 ] = getCap( theta1, theta2 );
+    }
+    writeOutArray( streamLogCap, Cap );
+}

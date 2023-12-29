@@ -1,0 +1,108 @@
+// -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
+// HELPER-MACROS 
+// -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
+
+// Normal-Vector of Sphere
+macro Normal() [N.x, N.y, N.z]//
+
+// 3D-Gradient
+macro Grad(u) [dx(u), dy(u), dz(u)]//
+
+// H0-Norm
+macro H0(u, v, Th) int3d(Th, qfV=QFV)(u*v)//
+
+// H1-Norm
+macro H1(u, v, Th) int3d(Th, qfV=DQFV)(dx(u)*dx(v) + dy(u)*dy(v) + dz(u)*dz(v))//
+
+macro INFO(msg) if (MPIRank == 0) { cout << "INFO: " << msg << endl; }//
+
+// chunk index
+macro INDC(ind) ind*cardTheta:((ind+1)*cardTheta-1)//
+
+//-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
+// COMPUTATION
+//-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
+
+// BOUNDARY CONDITIONS -> DEFINES: deltaUZero
+include "deltaUZero.idp"
+
+macro fillA() /* A = Stiffness Matrix */ 
+{ /* Fill Stiffness Matrix A */
+    varf a(u, v) = H1(u, v) + deltaUZero(u);
+
+    INFO("fill stiffness matrix ") 
+    
+    A = a(Vh, Vh, tgv = -2);
+
+    set(A, sparams = "-pc_type gamg -ksp_type cg -ksp_cg_type symmetric -ksp_rtol "+ string(solverEps));
+    //set(A, sparams = "-pc_type hpddm -ksp_type gmres -ksp_rtol "+ string(solverEps));
+
+    INFO("fill stiffness matrix done")
+}//
+
+macro fillWL(theta) 
+{
+    // set none zero dirchlet condition
+    varf bndDirichlet(unused, v) = deltaUZero(unused) + on(theta + 7, unused = 1); 
+    
+    wh[] = bndDirichlet(0, Vh, tgv = -1); 
+
+    W(INDC(theta)) = wh[];
+
+    // compute rhs of weak formulation
+    varf rhs(unused, v) = -H1(wh, v) + deltaUZero(unused); 
+    
+    l = rhs(0, Vh, tgv = -1); 
+
+    // for computation of capacitance needed
+    varf lBndVarf(unused, v) = H1(wh, v); 
+    
+    L[INDC(theta)] = lBndVarf(0, Vh, tgv = -1);
+}//
+
+macro solveU(theta) 
+{
+    U[INDC(theta)] = A^-1 * L[INDC(theta)];
+}//
+
+
+func real getCap(theta1, theta2){
+
+    real[int] temp = A * U[INDC(theta1)]; 
+    
+    real U1U2 = A(U[INDC(theta1)], temp); real W1L2 = A(W[INDC(theta1)], L[INDC(theta2)]);
+
+    return W1L2 - U1U2;
+}
+
+//-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
+// AUXILIARY FUNCTIONS
+//-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
+
+func bool writeOutArray( ofstream &file, real[int] &V ){
+    int last = V.n;
+    for [ i,v : V ] {
+        file << v; 
+        if( i == last-1 ) file << endl; else file << " "; 
+    }
+    return true;
+}
+
+macro initRecord(varName)
+    string dataPath#varName = outputDir + "/" + Stringification( varName ) + ".log" + currInd;
+    ofstream streamLog#varName(dataPath#VarName);
+    streamLog#varName.precision(16);
+//
+
+macro recordVar(varName, var)
+{
+    ofstream streamLog#varName(dataPath);
+    streamLog#varName.precision(16);
+    writeOutArray(streamLog#varName, var);
+}
+//
+
+macro record 
+{
+    recordVar(cap, Cap);
+}

@@ -1,49 +1,122 @@
 //-------------------------------------------------------
 // LOAD & INCLUDES
 //-------------------------------------------------------
-// --- FreeFEM ---
-load "msh3"
-load "tetgen2"
-load "iovtk"
-include "MeshSurface.idp"
-// --- USER DEFINED ---
+
+// --- USER DEFINED --- 
+// HAVE TO BE DEFINED BEFORE RUNNING THE SCRIPT
 include "config.edp"
-include "pkgMesh/mesh_surface.idp"
-include "pkgMesh/mesh_macro.idp"
-include "bMacro.idp"
-include "macro.idp"
+/* 
+THIS FILE DEFINES
+Objects: array of meshS
+Pos: array of real
+Theta: array of int
+*/
+load "tetgen"
 
 //-------------------------------------------------------
-// COMPUTATION
+// SETTINGS
+
+// SURFACE MESH
+
+real boxSize = 20000;
+
+real maxVol = boxSize^3;
+
+// TETGEN MESH
+
+string addSwitch = "";
+
+// radius edge radius for the tetgen mesh3
+real ratioRadiusEdge = 1.6; // default 1.6
+
+real minDihedralAngle = 18.0;
+
 //-------------------------------------------------------
+// FUNCTIONS
+func bool shiftMeshS(meshS & ThS, real[int] Coord, int L, int orientation){
+  /* set the label change */
+  int[int] changeLabel = [0, L];
+  // shift the mesh
+  ThS = movemeshS(ThS, 
+    /* set the transformation of the grid */ 
+    transfo = [
+      (x + Coord[0]), 
+      (y + Coord[1]), 
+      (z + Coord[2])
+      ],
+    /* change the labels */
+    label = changeLabel,
+    region = changeLabel,
+    orientation = orientation
+  );
 
-// cout the positions and the radii
-
-if(MPIRank == 0){
-    cout << "......................................................." << endl;
-    cout << "--- POS ---" << "\n" << Pos << endl;
-    cout << "......................................................." << endl;
-    cout << "--- R ---" << "\n" << R << endl;
-    cout << "......................................................." << endl;
+  return true;
 }
 
-mpiBarrier(Comm);
 
+func bool formMeshS(meshS & ThS, real[int] Axis, int L, int orientation){
 
-real[int] ElapsedMsh(1); real timeMesh = clock();
-// construct meteor Meshes in parallel
-initThS
+  /* set the label change */
+  int[int] changeLabel = [0, L];
+  
+  ThS = movemeshS(ThS, 
+    /* set the transformation of the grid */ 
+    transfo = [
+      (Axis[0]*x), 
+      (Axis[1]*y), 
+      (Axis[2]*z)
+    ],
+    /* change the labels */
+    label = changeLabel,
+    region = changeLabel,
+    orientation = orientation
+  );
 
-mpiBarrier(Comm);
+  return true;
+}
+//-------------------------------------------------------
+// MESHING
 
-if(MPIRank == 0){
-    
-    initTh
+meshS ThS;
+{/* ThS: Box */
+    /* ----- BOX ----- */
 
-    savemesh(Th, meshPath);
-    
-    ElapsedMsh[0] = clock() - timeMesh;
+    /* number of elements */
+    int[int] dimBoxNumElem = [1, 1, 1];
 
-    recordMesh
+    /* box (size-)dimension */
+    real [int,int] B = [[-boxSize/2., boxSize/2.], 
+                        [-boxSize/2., boxSize/2.], 
+                        [-boxSize/2., boxSize/2.]];
+
+    /* labels */
+    int [int,int] L = [[1, 2], [3, 4], [5, 6]];
+
+    ThS = SurfaceHex(dimBoxNumElem, B, L, 1);
+}
+for( int ind = 0; ind < Theta.n; ind++ ){
+    int L = Theta[ind];
+    real[int] Coord = [Pos[3*ind], Pos[3*ind + 1], Pos[3*ind + 2]];
+    real[int] Axis = [1, 1, 1];
+    formMeshS(Objects[ind], Axis, L, 1);
+    shiftMeshS(Objects[ind], Coord, L, 1);
+    ThS = ThS + Objects[ind];
 }
 
+mesh3 Th;
+{// mesh3: use tetgen to mesh the domain
+    /* ----- 3D TETGEN MESH ----- */
+    real[int] domain = [boxSize/2 * 0.99, 0, 0, 0, maxVol];
+
+    string mySwitch = "pq"+string(ratioRadiusEdge)+"/"+string(minDihedralAngle)+"aA" + addSwitch + "CV";
+
+    Th = tetg(
+        ThS, 
+        switch=mySwitch, 
+        nbofregions = 1, regionlist = domain, 
+        nbofholes = Theta.n, holelist = Pos);
+}
+savemesh(Th, meshPath);
+
+
+    

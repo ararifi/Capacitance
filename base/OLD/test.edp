@@ -1,0 +1,25 @@
+load "BinaryIO"
+
+int NN=3;
+
+real[int] V(NN);
+
+ofstream file("file.txt");
+
+func bool writeOutArray( ofstream &file, real[int] &V ){
+    int last = V.n;
+    for [ i,v : V ] {
+
+        file << v; 
+        if( i == last-1 ) file << endl; else file << " "; 
+    }
+    return true;
+}
+
+writeOutArray( file, V );
+
+for [ i,v : V ] {
+    v = i;
+}
+
+writeOutArray( file, V );
