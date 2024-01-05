@@ -32,7 +32,8 @@ real ratioRadiusEdge = 1.4; // default 1.6
 real minDihedralAngle = 18.0;
 
 //-------------------------------------------------------
-// FUNCTIONS
+// FUNCTIONS 
+
 func bool shiftMeshS(meshS & ThS, real[int] Coord, int L, int orientation){
   /* set the label change */
   int[int] changeLabel = [0, L];
@@ -74,8 +75,15 @@ func bool formMeshS(meshS & ThS, real[int] Axis, int L, int orientation){
 
   return true;
 }
+
+
+
+
+
+
+
 //-------------------------------------------------------
-// MESHING
+// MODIFY MESHS
 
 meshS ThS;
 {/* ThS: Box */
@@ -94,14 +102,19 @@ meshS ThS;
 
     ThS = SurfaceHex(dimBoxNumElem, B, L, 1);
 }
+
+// HERE WE ADD THE OBJECTS
 for( int ind = 0; ind < Theta.n; ind++ ){
-    int L = Theta[ind];
+    int L = Theta[ind] + 7;
     real[int] Coord = [Pos[3*ind], Pos[3*ind + 1], Pos[3*ind + 2]];
     real[int] Axis = [1, 1, 1];
     formMeshS(Objects[ind], Axis, L, 1);
     shiftMeshS(Objects[ind], Coord, L, 1);
     ThS = ThS + Objects[ind];
 }
+
+//-------------------------------------------------------
+// MESHING
 
 mesh3 Th;
 {// mesh3: use tetgen to mesh the domain

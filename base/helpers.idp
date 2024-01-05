@@ -14,10 +14,10 @@ macro H0(u, v, Th) int3d(Th, qfV=QFV)(u*v)//
 // H1-Norm
 macro H1(u, v, Th) int3d(Th, qfV=DQFV)(dx(u)*dx(v) + dy(u)*dy(v) + dz(u)*dz(v))//
 
-macro INFO(msg) if (MPIRank == 0) { cout << "INFO: " << msg << endl; }//
+macro INFO(msg) if(mpirank == 0){ cout << "INFO: "; cout << msg << endl; }//
 
 // chunk index
-macro INDC(ind) ind*cardTheta:((ind+1)*cardTheta-1)//
+macro INDC(ind) Vh.ndof * ind : (Vh.ndof * (ind+1) - 1)//
 
 //-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 // COMPUTATION
@@ -28,52 +28,55 @@ include "deltaUZero.idp"
 
 macro fillA() /* A = Stiffness Matrix */ 
 { /* Fill Stiffness Matrix A */
-    varf a(u, v) = H1(u, v) + deltaUZero(u);
+    varf a(u, v) = H1(u, v, Th) + deltaUZero(u);
 
-    INFO("fill stiffness matrix ") 
-    
+    INFO("initiate structure for partitioning matrix")
+    createMat(Th, A, Pk)
+
+    INFO("fill stiffness matrix")
     A = a(Vh, Vh, tgv = -2);
 
-    set(A, sparams = "-pc_type gamg -ksp_type cg -ksp_cg_type symmetric -ksp_rtol "+ string(solverEps));
-    //set(A, sparams = "-pc_type hpddm -ksp_type gmres -ksp_rtol "+ string(solverEps));
+    set(A, sparams = "-pc_type gamg -ksp_type cg -ksp_rtol "+ string(solverEps));
+    /*set(A, sparams = "-pc_type hpddm -ksp_type gmres -ksp_rtol "+ string(solverEps));*/
 
     INFO("fill stiffness matrix done")
 }//
 
-macro fillWL(theta) 
+macro fillWLl(theta)
 {
-    // set none zero dirchlet condition
+    /* set none zero dirchlet condition */
     varf bndDirichlet(unused, v) = deltaUZero(unused) + on(theta + 7, unused = 1); 
     
     wh[] = bndDirichlet(0, Vh, tgv = -1); 
 
     W(INDC(theta)) = wh[];
 
-    // compute rhs of weak formulation
-    varf rhs(unused, v) = -H1(wh, v) + deltaUZero(unused); 
+    /* compute rhs of weak formulation */
+    varf rhs(unused, v) = -H1(wh, v, Th) + deltaUZero(unused); 
     
     l = rhs(0, Vh, tgv = -1); 
 
-    // for computation of capacitance needed
-    varf lBndVarf(unused, v) = H1(wh, v); 
+    /* for computation of capacitance needed */
+    varf lBndVarf(unused, v) = H1(wh, v, Th); 
     
-    L[INDC(theta)] = lBndVarf(0, Vh, tgv = -1);
+    L(INDC(theta)) = lBndVarf(0, Vh, tgv = -1);
 }//
 
 macro solveU(theta) 
 {
-    U[INDC(theta)] = A^-1 * L[INDC(theta)];
+    real[int] temp = A^-1 * l;
+    U(INDC(theta)) = temp;
 }//
 
 
-func real getCap(theta1, theta2){
-
-    real[int] temp = A * U[INDC(theta1)]; 
+macro writeCap(theta1, theta2)
+{
+    real[int] temp = A * U(INDC(theta2));
     
-    real U1U2 = A(U[INDC(theta1)], temp); real W1L2 = A(W[INDC(theta1)], L[INDC(theta2)]);
+    real U1U2 = A(U(INDC(theta1)), temp); real W1L2 = A(W(INDC(theta1)), L(INDC(theta2)));
 
-    return W1L2 - U1U2;
-}
+    Cap[ theta2 - theta1 ] = 1.0 / (4 * pi) * (W1L2 - U1U2);
+}//
 
 //-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 // AUXILIARY FUNCTIONS
@@ -99,10 +102,9 @@ macro recordVar(varName, var)
     ofstream streamLog#varName(dataPath);
     streamLog#varName.precision(16);
     writeOutArray(streamLog#varName, var);
-}
-//
+}//
 
 macro record 
 {
     recordVar(cap, Cap);
-}
+}//

@@ -46,6 +46,11 @@ real solverEps = 1e-6;
 // L: Vector of stiffness matrix entries on boundary; for each conductor-group theta; size: cardTheta
 
 
+string meshPath =  "../mesh/test.mesh";
+string outputDir = "../output";
+int cardTheta = 1;
+int currInd = 0;
+
 
 // -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-
 // (0) MESH 
@@ -75,19 +80,20 @@ fespace Vh(Th, Pk);// Finite element space
 
 Vh uh; real[int] U(dofAll);// Solution function and vector
 
-Vh wh; real[int] W(dofAll), L(dofAll);// Boundary function and vecotrs
+Vh wh; real[int] W(dofAll), L(dofAll);// Boundary function and vectors
 
-Mat A(Vh.ndof);// Stiffness matrix
+Mat A(Vh.ndof); real[int] l(Vh.ndof);// Stiffness matrix and rhs
 
 // -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-
 // (2) SOLVING AND FILLING
 // -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-
 
 fillA // fill stiffness matrix
-
-for( int theta = 0; theta < cardTheta; ++theta ){ fillWL(theta) } // fill boundary vectors
-
-for( int theta = 0; theta < cardTheta; ++theta ){ solveU(theta) } // solve for each conductor-groups
+for( int theta = 0; theta < cardTheta; ++theta ){ 
+    fillWLl(theta);  // fill boundary vectors
+    // for [ i, elem : test ]{ if ( elem != 0.0 ){ INFO("BINGO"); break; } } // set boundary vector to 1 on boundary
+    solveU(theta); // solve for U[theta]
+}
 
 // -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-
 // (3) COMUTING CAPACITANCE
@@ -98,7 +104,11 @@ streamLogCap.precision(16);
 for( int theta1 = 0; theta1 < cardTheta; ++theta1 ){ 
     real[int] Cap( cardTheta - theta1 );
     for( int theta2 = theta1; theta2 < cardTheta; ++theta2 ){ 
-        Cap[ theta1 ] = getCap( theta1, theta2 );
+        INFO( "Computing capacitance between " + theta1 + " and " + theta2 );
+        // here evaluate the capacitance between theta1 and theta2
+        // and write it to Cap[theta1]
+        writeCap( theta1, theta2 );
     }
+
     writeOutArray( streamLogCap, Cap );
 }
