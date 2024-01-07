@@ -1,11 +1,25 @@
+//-------------------------------------------------------
+// LOAD & INCLUDES
+
+// PACKAGE LOADING
+load "msh3"
+include	"getARGV.idp"
+include "meshSurface.idp"
+include "helpers.idp"
+
 // --- FreeFEM ---
 load "PETSc"
 macro dimension()3//
 macro partitioner()parmetis//
 include "macro_ddm.idp"
 
-// --- USER DEFINED ---
-include "helpers.idp"
+string configFile = getARGV("-c", "config.csv");
+
+string meshFile = getARGV("-m", "mesh.mesh");
+
+string outputDir = getARGV("-o", "../output");
+
+string outputName = getARGV("-n", "sim");
 
 // ----- FINITE ELEMENT SPACE -----
 func Pk = P2;
@@ -45,19 +59,16 @@ real solverEps = 1e-6;
 // W: Vector of solutions wh; for each conductor-group theta; size: cardTheta
 // L: Vector of stiffness matrix entries on boundary; for each conductor-group theta; size: cardTheta
 
+string[int] config = readConfig( configFile );
 
-string meshPath =  "../mesh/test.mesh";
-string outputDir = "../output";
-int cardTheta = 1;
-int currInd = 0;
-
+int cardTheta = getCardTheta( config );
 
 // -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-
 // (0) MESH 
 // -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-
 
 // read mesh
-mesh3 ThNo, Th = readmesh3(meshPath);
+mesh3 ThNo, Th = readmesh3(meshFile);
 
 fespace Ph(Th, P0);
 Ph part;
@@ -99,7 +110,7 @@ for( int theta = 0; theta < cardTheta; ++theta ){
 // (3) COMUTING CAPACITANCE
 // -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-
 
-ofstream streamLogCap( outputDir + "/cap.log" + currInd ); 
+ofstream streamLogCap( outputDir + "/cap_"+outputName+".log" ); 
 streamLogCap.precision(16);
 for( int theta1 = 0; theta1 < cardTheta; ++theta1 ){ 
     real[int] Cap( cardTheta - theta1 );
@@ -109,6 +120,5 @@ for( int theta1 = 0; theta1 < cardTheta; ++theta1 ){
         // and write it to Cap[theta1]
         writeCap( theta1, theta2 );
     }
-
-    writeOutArray( streamLogCap, Cap );
+    if( mpirank == 0 ) writeOutArray( streamLogCap, Cap );
 }

@@ -1,0 +1,78 @@
+//-------------------------------------------------------
+// LOAD & INCLUDES
+
+// PACKAGE LOADING
+load "msh3"
+include	"getARGV.idp"
+include "meshSurface.idp"
+
+/* 
+INCLUDE CONFIG FILE WITH FOLLOWING STUCTURE AS CSV:
+objectType,theta,positionX,positionY,positionZ,objectParameter1,objectParameter2,objectParameter3,objectParameter4
+*/
+string configFile = getARGV("-c", "config.csv");
+
+string meshSFile = getARGV("-s", "mesh.meshS");
+
+//-------------------------------------------------------
+// SETTINGS
+
+real boxSize = 20000;
+
+//-------------------------------------------------------
+// SET BOX */
+meshS ThS;
+{
+    /* ----- BOX ----- */
+
+    /* number of elements */
+    int[int] dimBoxNumElem = [1, 1, 1];
+
+    /* box (size-)dimension */
+    real [int,int] B = [[-boxSize/2., boxSize/2.], 
+                        [-boxSize/2., boxSize/2.], 
+                        [-boxSize/2., boxSize/2.]];
+
+    /* labels */
+    int [int,int] L = [[1, 2], [3, 4], [5, 6]];
+
+    ThS = SurfaceHex(dimBoxNumElem, B, L, 1);
+}
+
+//-------------------------------------------------------
+// SET OBJECTS */
+
+// LOAD FILES FROM CONFIG
+string[int] config = readConfig(configFile); 
+assert(!checkIsEmpty(config));
+
+int numObjects = config.n;
+meshS[int] ThSObjects(numObjects);
+for( int ind = 0; ind < numObjects; ind++ ){
+    
+    string line = config[ind];
+    // ---------------------------------
+
+    string type = getType(line);
+    int theta = getTheta(line);
+    real[int] position = getPosition(line);
+    real[int] parameters = getParameter(line);
+    // ---------------------------------
+
+    meshS ThSObject = loadMeshS( type, parameters );
+
+    shiftMeshS( ThSObject, position, theta );
+
+    formMeshS( ThSObject, type, parameters );
+    // ---------------------------------
+
+    ThSObjects[ind] = ThSObject;
+}
+
+// MERGE OBJECTS
+for( int ind = 0; ind < numObjects; ind++ ){
+    ThS = ThS + ThSObjects[ind];
+}
+
+// SAVE MESH
+savemesh( ThS, meshSFile );

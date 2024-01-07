@@ -1,0 +1,190 @@
+load "msh3"
+include "MeshSurface.idp"
+
+//----------------------------------------------
+// PATHS
+
+string PATHicoSphere = "../pkgMesh/meshSicosphere/meshS/";
+
+//----------------------------------------------
+// FUNCTION: READER
+
+func string[int] readConfig(string filename){
+  string[int] config(0);
+  string line;
+  int cnt = 0;
+  ifstream f(filename);
+  f >> line;// header
+  while(true){
+    f >> line;
+    if(line=="end") break;
+    config.resize(cnt+1);
+    config[cnt] = line;
+    cnt++;
+  }
+  return config;
+}
+
+func bool checkIsEmpty(string[int] & config){
+    if (config.n == 0){
+        cout << "Warning: config file is empty" << endl;
+        return true;
+    }else{
+        return false;
+    }
+}
+
+func string getLineByIndex(string & line, int index){
+    int len = line.length; int startLine = 0; int endLine = 0;
+    string part;
+    for( int ind = 0; ind < index + 1; ind++){
+        if (startLine >= len){
+            cout << "Warning: index out of range" << endl; return "";
+        }
+        endLine = line.find(",", startLine);
+        part = line( startLine : (endLine-1) );
+        startLine = endLine+1;
+    }
+    return part;
+}
+
+func string getType(string & line){
+    return getLineByIndex(line, 0);
+}
+
+func string[int] getType(string[int] & config){
+    int numLines = config.n;
+    string[int] types(numLines);
+    for( int indLine = 0; indLine < numLines; indLine++) types[indLine] = getType(config[indLine]);
+    return types;
+}
+
+func real[int] getPosition(string & line){
+    real[int] coord(3);
+    coord[0] = atof(getLineByIndex(line, 2));
+    coord[1] = atof(getLineByIndex(line, 3));
+    coord[2] = atof(getLineByIndex(line, 4));
+    return coord;
+}
+
+func real[int] getPosition(string[int] & config){
+    int numLines = config.n;
+    real[int] coords(3*numLines);
+    for( int indLine = 0; indLine < numLines; indLine++){
+        real[int] coord = getPosition(config[indLine]);
+        for (int indCoord = 0; indCoord < 3; indCoord++){
+            coords[3*indLine + indCoord] = coord[indCoord];
+        }
+    }
+    return coords;
+}
+
+func int getTheta(string & line){
+    return atoi(getLineByIndex(line, 1));
+}
+
+func int[int] getTheta(string[int] & config){
+    int numLines = config.n;
+    int[int] theta(numLines);
+    for( int indLine = 0; indLine < numLines; indLine++) theta[indLine] = getTheta(config[indLine]);
+    return theta;
+}
+
+func int getNumUnique( int[int] & Arr ){
+    Arr.sort;
+    int cnt = 0;
+    for( int indLine = 0; indLine < Arr.n; indLine++){
+        if (indLine == 0){
+            cnt++;
+        }else{
+            if (Arr[indLine] != Arr[indLine-1]){
+                cnt++;
+            }
+        }
+    }
+    return cnt;
+}
+
+func int getCardTheta(string[int] & config){
+    int[int] Theta = getTheta(config);
+    return getNumUnique(Theta);
+}
+
+
+func real[int] getParameter(string & line){
+    real[int] parameter(4);
+    for (int indParam = 0; indParam < 4; indParam++){
+        parameter[indParam] = atof(getLineByIndex(line, 5+indParam));
+    }
+    return parameter;
+}
+
+func real[int] getParameter(string[int] & config){
+    int numLines = config.n;
+    real[int] parameters(4*numLines);
+    for( int indLine = 0; indLine < numLines; indLine++){
+        real[int] parameter = getParameter(config[indLine]);
+        for (int indParam = 0; indParam < 4; indParam++){
+            parameters[4*indLine + indParam] = parameter[indParam];
+        }
+    }
+}
+
+//----------------------------------------------
+// FUNCTION: MESH
+
+func meshS loadMeshS(string & type, real[int] Parameter){
+  meshS ThS;
+  if (type == "icoSphere"){
+    ThS = readmeshS(PATHicoSphere + round(Parameter[0]) + ".mesh");
+  }else{
+    cout << "Warning: type not found" << endl;
+  }
+  return ThS;
+}
+
+func bool shiftMeshS(meshS & ThS, real[int] Coord, int theta){
+
+  int orientation = 1;
+
+  /* set the label change */
+  int[int] changeLabel = [0, theta + 7];
+  // shift the mesh
+  ThS = movemeshS(ThS, 
+    /* set the transformation of the grid */ 
+    transfo = [
+      (x + Coord[0]), 
+      (y + Coord[1]), 
+      (z + Coord[2])
+      ],
+    /* change the labels */
+    label = changeLabel,
+    region = changeLabel,
+    orientation = orientation
+  );
+
+  return true;
+}
+
+func bool formMeshS(meshS & ThS, string & type, real[int] Parameter){
+
+  if (type == "icoSphere"){
+    
+    ThS = movemeshS(ThS, 
+      /* set the transformation of the grid */ 
+      transfo = [
+        (Parameter[1]*x), 
+        (Parameter[2]*y), 
+        (Parameter[3]*z)
+      ]
+    );
+
+    return true;
+  }else{
+    cout << "Warning: type not found" << endl;
+    return false;
+  }
+}
+
+//----------------------------------------------
+

@@ -92,14 +92,14 @@ func bool writeOutArray( ofstream &file, real[int] &V ){
 }
 
 macro initRecord(varName)
-    string dataPath#varName = outputDir + "/" + Stringification( varName ) + ".log" + currInd;
+    string dataPath#varName = outputDir + "/" + Stringification( varName ) + "_" + outputName + ".log";
     ofstream streamLog#varName(dataPath#VarName);
     streamLog#varName.precision(16);
 //
 
 macro recordVar(varName, var)
 {
-    ofstream streamLog#varName(dataPath);
+    ofstream streamLog#varName(dataPath#VarName);
     streamLog#varName.precision(16);
     writeOutArray(streamLog#varName, var);
 }//

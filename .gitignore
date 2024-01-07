@@ -1,0 +1,4 @@
+*.log
+*.meshS
+*.mesh
+!pkgMesh/meshSicosphere/meshS/*.mesh
