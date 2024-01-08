@@ -4,7 +4,7 @@
 // PACKAGE LOADING
 load "msh3"
 include	"getARGV.idp"
-include "meshSurface.idp"
+include "object.idp"
 include "helpers.idp"
 
 // --- FreeFEM ---

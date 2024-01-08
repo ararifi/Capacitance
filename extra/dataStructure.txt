@@ -1,0 +1,11 @@
+Config-File
+
+CSV File,
+with Data Structure:
+objectType,theta,positionX,positionY,positionZ,objectParameter1,objectParameter2,objectParameter3,objectParameter4
+icoSphere,0,3.0,0.0,0.0,6,1.0,1.0,1.0
+icoSphere,1,6.0,0.0,0.0,6,1.0,1.0,1.0
+icoSphere,2,0.0,0.0,0.0,8,1.5,1.0,1.0
+end
+
+The object parameters are dependent on the objectType. The effect of the parameters is influenced by the implementation within the functions of buildMeshS.edp.

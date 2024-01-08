@@ -1,0 +1,33 @@
+//-------------------------------------------------------
+// LOAD & INCLUDES
+include	"getARGV.idp"
+include "object.idp"
+
+string configFile = getARGV("-c", "config.csv");
+
+string meshFileIn = getARGV("-m", "mesh.mesh");
+
+string meshFileOut = getARGV("-o", meshFileIn);
+
+//-------------------------------------------------------
+// LOAD
+
+string[int] config = readConfig( configFile );
+
+int[int] Theta = getTheta(config);
+
+mesh3 Th = readmesh3(meshFileIn);
+
+//-------------------------------------------------------
+// CHANGE LABEL AND SAVE
+
+int[int] Label( 2 * Theta.n );
+
+for ( int ind = 0; ind < Theta.n; ++ind )
+{
+    Label[ 2 * ind ] = ind + 7; Label[ 2 * ind + 1 ] = Theta[ind] + 7;
+}
+
+mesh3 ThNew = movemesh3( Th, label=Label );
+
+savemesh(ThNew, meshFileOut);

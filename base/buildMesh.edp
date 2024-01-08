@@ -1,14 +1,14 @@
 //-------------------------------------------------------
 // LOAD & INCLUDES
 load "tetgen2"
-include "meshSurface.idp"
+include "object.idp"
 include	"getARGV.idp"
 
 string configFile = getARGV("-c", "config.csv");
 
-string meshSFile = getARGV("-s", "mesh.meshS");
+string meshSFile = getARGV("-m", "mesh.meshS");
 
-string meshFile = getARGV("-m", "mesh.mesh");
+string meshFile = getARGV("-o", "mesh.mesh");
 
 //-------------------------------------------------------
 // SETTINGS

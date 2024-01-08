@@ -4,7 +4,7 @@
 // PACKAGE LOADING
 load "msh3"
 include	"getARGV.idp"
-include "meshSurface.idp"
+include "object.idp"
 
 /* 
 INCLUDE CONFIG FILE WITH FOLLOWING STUCTURE AS CSV:
@@ -12,7 +12,9 @@ objectType,theta,positionX,positionY,positionZ,objectParameter1,objectParameter2
 */
 string configFile = getARGV("-c", "config.csv");
 
-string meshSFile = getARGV("-s", "mesh.meshS");
+string meshSFile = getARGV("-o", "mesh.meshS");
+
+icoSphereDir = getARGV("-i", "icosphere");
 
 //-------------------------------------------------------
 // SETTINGS
@@ -61,7 +63,7 @@ for( int ind = 0; ind < numObjects; ind++ ){
 
     meshS ThSObject = loadMeshS( type, parameters );
 
-    shiftMeshS( ThSObject, position, theta );
+    shiftMeshS( ThSObject, position, ind );
 
     formMeshS( ThSObject, type, parameters );
     // ---------------------------------

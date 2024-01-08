@@ -4,7 +4,7 @@ include "MeshSurface.idp"
 //----------------------------------------------
 // PATHS
 
-string PATHicoSphere = "../pkgMesh/meshSicosphere/meshS/";
+string icoSphereDir = "../pkgMesh/meshSicosphere/meshS/";
 
 //----------------------------------------------
 // FUNCTION: READER
@@ -136,7 +136,7 @@ func real[int] getParameter(string[int] & config){
 func meshS loadMeshS(string & type, real[int] Parameter){
   meshS ThS;
   if (type == "icoSphere"){
-    ThS = readmeshS(PATHicoSphere + round(Parameter[0]) + ".mesh");
+    ThS = readmeshS(icoSphereDir + round(Parameter[0]) + ".mesh");
   }else{
     cout << "Warning: type not found" << endl;
   }

@@ -1,0 +1,12 @@
+#!/bin/bash
+
+shopt -s expand_aliases
+
+# Define aliases
+alias FreeFem++="apptainer run /home/aarifi/Projects/FreeFem_Sandbox FreeFem++"
+alias FreeFem++-mpi="apptainer run /home/aarifi/Projects/FreeFem_Sandbox FreeFem++-mpi"
+alias ff-mpirun="apptainer run /home/aarifi/Projects/FreeFem_Sandbox ff-mpirun"
+alias mpirun="apptainer run /home/aarifi/Projects/FreeFem_Sandbox /usr/freefem/ff-petsc/r/bin/mpirun"  
+alias ff-shell="apptainer shell /home/aarifi/Projects/FreeFem_Sandbox"
+alias ls="ls --color=auto"
+alias rm='rm -i'
