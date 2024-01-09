@@ -12,16 +12,20 @@ source config.sh
 
 # default values
 simName=""
+meshName=""
 configName="" 
 meshName=""
+cpus="1"
 
-while getopts 's:c:a:b:' opt
+while getopts 's:m:c:i:n:' opt
 do 
     case $opt in
+        # specifically the prefix like name_ind
         s) simName="$OPTARG";;
         m) meshName="$OPTARG";;
-        a) startInd="$OPTARG";;
-        b) endInd="$OPTARG";;
+        c) configName="$OPTARG";;
+        i) ind="$OPTARG";;
+        n) cpus="$OPTARG";;
     esac
 done
 
@@ -30,16 +34,21 @@ if [ -z "$simName" ]; then
     exit 1
 fi
 
+if [ ! -z $SLURM_ARRAY_TASK_ID ]; then
+    ind=$SLURM_ARRAY_TASK_ID
+fi
 #------------------------------------------------------------
 # RUN
 #------------------------------------------------------------
 
-for (( i=$startInd; i<=$endInd; i++ ))
-do
-    echo "Running simulation $i"    
-    if [ -z "$meshName" ]; then
-        ./run.sh -s ${simName}_${i} -c ${configName}_${i}
-    else
-        ./run.sh -s ${simName}_${i} -c ${meshName} -m ${meshName}
-    fi
-done
+./run.sh -s ${simName}_${ind} -c ${configName}_${ind}
+
+#for (( i=$startInd; i<=$endInd; i++ ))
+#do
+#    echo "Running simulation $i"    
+#    if [ -z "$meshName" ]; then
+#        
+#    else
+#        ./run.sh -s ${simName}_${i} -c ${meshName} -m ${meshName}
+#    fi
+#done

@@ -17,7 +17,7 @@ fi
 #------------------------------------------------------------
 
 dirRoot="data"
-dirCap="$dirRoot/capacitance"
+dirOutput="$dirRoot/output"
 dirMesh="$dirRoot/mesh"
 dirConfig="$dirRoot/config"
 
