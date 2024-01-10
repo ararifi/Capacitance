@@ -65,7 +65,7 @@ for( int ind = 0; ind < numObjects; ind++ ){
 
     shiftMeshS( ThSObject, position, ind );
 
-    formMeshS( ThSObject, type, parameters );
+    formMeshS( ThSObject, type, position, parameters );
     // ---------------------------------
 
     ThSObjects[ind] = ThSObject;

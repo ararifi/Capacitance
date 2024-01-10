@@ -14,10 +14,10 @@ func string[int] readConfig(string filename){
   string line;
   int cnt = 0;
   ifstream f(filename);
-  f >> line;// header
-  while(true){
-    f >> line;
-    if(line=="end") break;
+  getline(f, line);// header
+  while(f.good()){
+    getline(f, line);
+    if(line == "") continue;
     config.resize(cnt+1);
     config[cnt] = line;
     cnt++;
@@ -166,16 +166,16 @@ func bool shiftMeshS(meshS & ThS, real[int] Coord, int theta){
   return true;
 }
 
-func bool formMeshS(meshS & ThS, string & type, real[int] Parameter){
+func bool formMeshS(meshS & ThS, string & type, real[int] Coord, real[int] Parameter){
 
   if (type == "icoSphere"){
     
     ThS = movemeshS(ThS, 
       /* set the transformation of the grid */ 
       transfo = [
-        (Parameter[1]*x), 
-        (Parameter[2]*y), 
-        (Parameter[3]*z)
+        (Parameter[1]*( x - Coord[0] ) + Coord[0]), 
+        (Parameter[2]*( y - Coord[1] ) + Coord[1]),
+        (Parameter[3]*( z - Coord[2] ) + Coord[2])
       ]
     );
 

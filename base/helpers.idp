@@ -86,7 +86,7 @@ func bool writeOutArray( ofstream &file, real[int] &V ){
     int last = V.n;
     for [ i,v : V ] {
         file << v; 
-        if( i == last-1 ) file << endl; else file << " "; 
+        if( i == last-1 ) file << endl; else file << ","; 
     }
     return true;
 }

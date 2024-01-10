@@ -57,7 +57,7 @@ macro QFT()qf2pT//
 // -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-
 
 // read mesh
-mesh3 ThNo, Th = readmesh3(meshPath);
+mesh ThNo, Th = readmesh(meshPath);
 mpiBarrier(Comm);
 
 fespace Ph(Th, P0);

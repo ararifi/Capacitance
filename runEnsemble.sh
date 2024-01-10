@@ -41,7 +41,7 @@ fi
 # RUN
 #------------------------------------------------------------
 
-./run.sh -s ${simName}_${ind} -c ${configName}_${ind}
+./run.sh -s ${simName}_${ind} -c ${configName}_${ind} -n ${cpus} 
 
 #for (( i=$startInd; i<=$endInd; i++ ))
 #do

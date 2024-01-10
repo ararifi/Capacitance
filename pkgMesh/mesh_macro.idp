@@ -447,7 +447,7 @@ setMeteorMesh
 
 macro initTh
 
-mesh3 Th;
+mesh Th;
 
 {
     /* ----- 3D TETGEN MESH ----- */

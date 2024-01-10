@@ -67,6 +67,7 @@ else
 fi
 
 
+
 #------------------------------------------------------------
 # RUN
 #------------------------------------------------------------
@@ -74,12 +75,12 @@ fi
 # write out flags
 outputFile="$dirOutput/$simName.log"
 :> "$outputFile"
-echo "$dirOutput" >> "$outputFile"
+echo "$(pwd)/$dirOutput" >> "$outputFile"
 echo "$simName" >> "$outputFile"
 echo "$configName" >> "$outputFile"
-echo "$configFile" >> "$outputFile"
+echo "$(pwd)/$configFile" >> "$outputFile"
 echo "$meshName" >> "$outputFile"
-echo "$meshFile" >> "$outputFile"
+echo "$(pwd)/$meshFile" >> "$outputFile"
 
 
 # run simulation 

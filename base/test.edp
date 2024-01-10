@@ -1,0 +1,18 @@
+func string[int] readConfig(string filename){
+  string[int] config(0);
+  string line;
+  int cnt = 0;
+  ifstream f(filename);
+  getline(f, line);// header
+  while(f.good()){
+    getline(f, line);
+    if(line == "") continue;
+    config.resize(cnt+1);
+    config[cnt] = line;
+    cnt++;
+  }
+  return config;
+}
+
+string[int] test = readConfig("/home/aarifi/Projects/Capacitance/data/config/test.csv");
+cout << test[1] << endl;

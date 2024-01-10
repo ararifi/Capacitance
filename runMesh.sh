@@ -16,7 +16,7 @@ configName=""
 onlyRelabel=false
 rebuildMesh=true
 
-while getopts 'm:c:r' opt
+while getopts 'm:c:o:l' opt
 do 
     case $opt in
         m) meshNameIn="$OPTARG";;
@@ -58,12 +58,12 @@ meshSFile="$dirMesh/$meshNameOut.meshS"
 
 BUILD_MESHS=true; BUILD_MESH=true; RELABEL_MESH=true
 
-if $onlyRelabel; then BUILD_MESHS=false; BUILD_MESH=false; fi
+if $onlyRelabel; then BUILD_MESHS=false; BUILD_MESH=false; echo "hi"; fi
 
 logMesh="$dirMesh/$meshNameOut.logMesh"
 :> "$logMesh"
-echo "$meshFileIn" >> "$logMesh"
-echo "$meshFileOut" >> "$logMesh"
+echo "$(pwd)/$meshFileIn" >> "$logMesh"
+echo "$(pwd)/$meshFileOut" >> "$logMesh"
 echo "$configName" >> "$logMesh"
 
 #------------------------------------------------------------
