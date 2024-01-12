@@ -35,6 +35,13 @@ end
 # Modified check_overlap function
 x_tolerance = 1e-7;
 function check_overlap(center1, radii1, center2, radii2)
+
+    # check if centers are equal
+    if center1 == center2
+        return true
+    end
+
+
     # Calculate the radii of the enveloping spheres
     radius1 = maximum(radii1)
     radius2 = maximum(radii2)
@@ -83,6 +90,24 @@ function addIco( config, theta, positionX, positionY, positionZ, resolution, rad
     return true
 end
 
+# if therer is a overlap remove the last added and replace it with a new one
+function fAddIco!( config, theta, positionX, positionY, positionZ, resolution, radiusX, radiusY, radiusZ )
+    # check overlap
+    to_remove = Int64[]
+    for (ind, row) in enumerate(eachrow(config))
+        if row.objectType == "icoSphere"
+            if check_overlap([positionX, positionY, positionZ], [radiusX, radiusY, radiusZ], 
+                    [row.positionX, row.positionY, row.positionZ], [row.objectParameter2, row.objectParameter3, row.objectParameter4])
+                push!(to_remove, ind)
+            end
+        end
+    end
+    delete!(config, to_remove)
+    push!( config, ["icoSphere", theta, positionX, positionY, positionZ, resolution, radiusX, radiusY, radiusZ] )
+    return true
+end
+
+
 function addIcoSphere( config, theta, positionX, positionY, positionZ, resolution, radius )
     return addIco( config, theta, positionX, positionY, positionZ, resolution, radius, radius, radius )
 end
@@ -108,4 +133,64 @@ function randomIcoSphere( R, config, theta, resolution, radius )
     return randomIco( R, config, theta, resolution, radius, radius, radius )
 end
 
+# write function analog to 
+#=
+func bool setGrid(int offsetInd, int num, real[int] & Mid, real sizeLBox){
+    
+    if(num == 0){return true;}
 
+    // if only one particle set Mid Point as Position
+    if(num == 1){return setPos(offsetInd, Mid, true);}
+
+    IFMACRO(SPECTRUE, TRUE)
+    // check the length of the given range
+    checkLength(offsetInd, num)
+    ENDIFMACRO
+    
+    // create the array for the grid
+    real[int] a(3*num);
+
+    // get the dimension of lattice box
+    int dimLBox = int(ceil(num^(1.0/3.0)));
+
+    // get equidistant distances of the particles
+    real eqSize = sizeLBox / (dimLBox - 1);
+
+    // set the offset of the particles, such that the mid point of the
+    // grid is at the @ center 
+    real[int] offset(3); offset = - eqSize  * ( floor(dimLBox/2.0) - ((dimLBox+1) % 2)/2.0  );
+    // * ((round(dimLBox/2)-1) + ((dimLBox+1) % 2)/2.0); 
+    
+    offset = offset + Mid; 
+    // set the particles
+    real[int] temp(3);
+    for(int ind = 0; ind < num; ind++){
+        temp[0] = eqSize * (ind % dimLBox) + offset[0];
+        temp[1] = eqSize * (div(ind, dimLBox) % dimLBox) + offset[1];
+        temp[2] = eqSize * (div(ind, dimLBox * dimLBox) % dimLBox) + offset[2];
+        if(!setPos(offsetInd + ind, temp, true)){return false;}
+    }
+
+    return true;
+}
+=#
+
+
+
+
+function cubicArray( dimension, size, config, theta, resolution, radius1, radius2, radius3, fAdd=false )
+    # center the array
+    offset = - size * ( floor(dimension/2.0) - ((dimension+1) % 2)/2.0  );
+    # set the particles
+    pos = zeros(3)
+    for ind = 1:dimension^3
+        pos[1] = size * (ind % dimension) + offset
+        pos[2] = size * (div(ind, dimension) % dimension) + offset
+        pos[3] = size * (div(ind, dimension^2) % dimension) + offset
+        if !fAdd
+            addIco( config, theta, pos[1], pos[2], pos[3], resolution, radius1, radius2, radius3 )
+        else
+            fAddIco( config, theta, pos[1], pos[2], pos[3], resolution, radius1, radius2, radius3 )
+        end
+    end
+end

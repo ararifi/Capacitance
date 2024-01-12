@@ -10,3 +10,8 @@ alias mpirun="apptainer run /home/aarifi/Projects/FreeFem_Sandbox /usr/freefem/f
 alias ff-shell="apptainer shell /home/aarifi/Projects/FreeFem_Sandbox"
 alias ls="ls --color=auto"
 alias rm='rm -i'
+
+# alias mogon /lustre/project/m2_jgu-binaryhpc/aarifi/Capacitance
+alias FreeFem++-mpi="apptainer run --no-home --bind /lustre/project/m2_jgu-binaryhpc/aarifi/Capacitance:/home/aarifi/Projects/Capacitance ${HOME}/cnts/ff FreeFem++-mpi"
+
+alias FreeFem++-mpi="apptainer shell --no-home --bind /lustre/project/m2_jgu-binaryhpc/aarifi/Capacitance:/home/aarifi/Projects/Capacitance ${HOME}/cnts/ff"
