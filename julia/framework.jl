@@ -45,8 +45,9 @@ function read_capacitance(filepath)
 end
 
 # Function read filepath in order to obtain config and data
-function read_data( dataLogFile, dataFile )
+function read_data( dataPath, dataName )
     configFile=""
+    dataLogFile=dataPath*"/"*dataName*".log"
     open(dataLogFile, "r") do file
         lines = readlines(file)
         if length(lines) >= 4
@@ -56,10 +57,9 @@ function read_data( dataLogFile, dataFile )
         end
     end
 
-    config = read_csv(configFile)
+    config = read_csv("../"*configFile)
 
-    cap = read_capacitance(dataFile)
-
+    cap = read_capacitance(dataPath*"/cap_"*dataName*".log")
     return config, cap
 end
 

@@ -91,7 +91,7 @@ function addIco( config, theta, positionX, positionY, positionZ, resolution, rad
 end
 
 # if therer is a overlap remove the last added and replace it with a new one
-function fAddIco!( config, theta, positionX, positionY, positionZ, resolution, radiusX, radiusY, radiusZ )
+function fAddIco( config, theta, positionX, positionY, positionZ, resolution, radiusX, radiusY, radiusZ )
     # check overlap
     to_remove = Int64[]
     for (ind, row) in enumerate(eachrow(config))
@@ -187,10 +187,20 @@ function cubicArray( dimension, size, config, theta, resolution, radius1, radius
         pos[1] = size * (ind % dimension) + offset
         pos[2] = size * (div(ind, dimension) % dimension) + offset
         pos[3] = size * (div(ind, dimension^2) % dimension) + offset
-        if !fAdd
-            addIco( config, theta, pos[1], pos[2], pos[3], resolution, radius1, radius2, radius3 )
+
+        if length(theta) == 1
+            theta_ = theta[1]
+        elseif length(theta) == dimension^3
+            theta_ = theta[ind]
         else
-            fAddIco( config, theta, pos[1], pos[2], pos[3], resolution, radius1, radius2, radius3 )
+            println("ERROR: theta has wrong length")
+            return false
+        end
+
+        if !fAdd
+            addIco( config, theta_, pos[1], pos[2], pos[3], resolution, radius1, radius2, radius3 )
+        else
+            fAddIco( config, theta_, pos[1], pos[2], pos[3], resolution, radius1, radius2, radius3 )
         end
     end
 end

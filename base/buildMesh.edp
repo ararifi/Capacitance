@@ -16,7 +16,7 @@ string meshFile = getARGV("-o", "mesh.mesh");
 string addSwitch = "";
 
 // radius edge radius for the tetgen mesh3
-real ratioRadiusEdge = 1.4; // default 1.6
+real ratioRadiusEdge = 2.0; // default 1.6
 
 real minDihedralAngle = 18.0;
 

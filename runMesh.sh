@@ -62,8 +62,8 @@ if $onlyRelabel; then BUILD_MESHS=false; BUILD_MESH=false; echo "hi"; fi
 
 logMesh="$dirMesh/$meshNameOut.logMesh"
 :> "$logMesh"
-echo "$(pwd)/$meshFileIn" >> "$logMesh"
-echo "$(pwd)/$meshFileOut" >> "$logMesh"
+echo "$meshFileIn" >> "$logMesh"
+echo "$meshFileOut" >> "$logMesh"
 echo "$configName" >> "$logMesh"
 
 #------------------------------------------------------------
