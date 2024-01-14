@@ -117,7 +117,7 @@ else
     jobName="${simName}_${jobID}"
 
     srun --exact -u -c1 -n${cpus} --mem-per-cpu=${mem}M --mpi=pmi2 \
-        -J ${jobName} -e "./${dirSlurm}/${jobName}.err" -o "./${dirSlurm}/${jobName}.out" \ 
+        -J ${jobName} -e "./${dirSlurm}/${jobName}.err" -o "./${dirSlurm}/${jobName}.out" \
         FreeFem++-mpi laplace.edp -c "$configFile" -m "$meshFile" -o "$dirOutput" -n "$simName"
     exit 0
 fi
