@@ -3,8 +3,6 @@
 #SBATCH -J CapacityCoefficient
 #SBATCH -A m2_jgu-binaryhpc 
 #SBATCH -p parallel
-#SBATCH -e ./data/slurmGlobal/slurm-%A-%a.err
-#SBATCH -o ./data/slurmGlobal/slurm-%A-%a.out
 #SBATCH -C skylake
 #SBATCH --ntasks-per-node=32
 #SBATCH --spread-job
