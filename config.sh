@@ -1,11 +1,11 @@
 # FIX PATH AND CREATE ALIAS FOR FREEFEM++
 #------------------------------------------------------------
 
-SCRIPTPATH="/home/aarifi/Projects/Capacitance"
-export SCRIPTPATH
+#SCRIPTPATH="/home/aarifi/Projects/Capacitance"
+#export SCRIPTPATH
 
 # --- !!! ---
-cd $SCRIPTPATH
+#cd $SCRIPTPATH
 # --- !!! ---
 
 if ! command -v FreeFem++ &> /dev/null; then
@@ -20,6 +20,7 @@ dirRoot="data"
 dirOutput="$dirRoot/output"
 dirMesh="$dirRoot/mesh"
 dirConfig="$dirRoot/config"
+dirSlurm="$dirRoot/slurm"
 
 dirBase="base"
 dirIco="pkgMesh/meshSicosphere/meshS/"

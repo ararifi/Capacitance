@@ -64,7 +64,7 @@ logMesh="$dirMesh/$meshNameOut.logMesh"
 :> "$logMesh"
 echo "$meshFileIn" >> "$logMesh"
 echo "$meshFileOut" >> "$logMesh"
-echo "$configName" >> "$logMesh"
+echo "$configFile" >> "$logMesh"
 
 #------------------------------------------------------------
 # RUN

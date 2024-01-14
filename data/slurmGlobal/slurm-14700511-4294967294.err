@@ -1,0 +1,6 @@
+INFO:    underlay of /etc/localtime required more than 50 (76) bind mounts
+INFO:    underlay of /etc/localtime required more than 50 (76) bind mounts
+INFO:    underlay of /etc/localtime required more than 50 (76) bind mounts
+srun: error: x0386: tasks 0-31: Exited with exit code 2
+srun: launch/slurm: _step_signal: Terminating StepId=14700511.0
+INFO:    underlay of /etc/localtime required more than 50 (76) bind mounts

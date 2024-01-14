@@ -1,0 +1,12 @@
+/var/tmp/slurmd_spool/job14700501/slurm_script: illegal option -- C
+/var/tmp/slurmd_spool/job14700501/slurm_script: illegal option -- N
+/var/tmp/slurmd_spool/job14700501/slurm_script: illegal option -- 3
+/var/tmp/slurmd_spool/job14700501/slurm_script: illegal option -- 2
+/var/tmp/slurmd_spool/job14700501/slurm_script: illegal option -- M
+/var/tmp/slurmd_spool/job14700501/slurm_script: illegal option -- 2
+/var/tmp/slurmd_spool/job14700501/slurm_script: illegal option -- 7
+/var/tmp/slurmd_spool/job14700501/slurm_script: illegal option -- 0
+/var/tmp/slurmd_spool/job14700501/slurm_script: illegal option -- 0
+INFO:    underlay of /etc/localtime required more than 50 (76) bind mounts
+[mpiexec@x0386.mogon] HYDU_create_process (lib/utils/launch.c:73): execvp error on file srun (No such file or directory)
+slurmstepd: error: *** JOB 14700501 ON x0386 CANCELLED AT 2024-01-14T08:34:04 ***

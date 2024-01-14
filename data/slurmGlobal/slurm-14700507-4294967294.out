@@ -1,0 +1,642 @@
+Running simulation on cluster...
+-- FreeFem++ v4.14 (Mon Dec 25 14:16:42 UTC 2023 - git v4.14)
+   file : _test_.edp
+ Load: lg_fem lg_mesh lg_mesh3 eigenvalue parallelempi 
+    1 : //-------------------------------------------------------
+    2 : // LOAD & INCLUDES
+    3 : 
+    4 : // PACKAGE LOADING
+    5 : load "msh3"
+    6 : include	"getARGV.idp" // for gestion of FreeFem++ argument and in version 3.10-1 FH
+    2 :  // F. Hecht 
+    3 :  // Usage:  getARGV(n,defaultvalue) // get the fist used default valeu
+    4 :  //  or     getARGV(after,defaultvalue) // get the arg after after 
+    5 :  // the type of delfaut value given the return type: int,double, string
+    6 :  // Modif version 3.54-2  Jan 2018 (add ones include)
+    7 :  IFMACRO(!getARGVidp)
+    8 &  macro getARGVidp 1 //
+    9 &  
+   10 &  
+   11 &  func int usedARGV(int n)
+   12 & {
+   13 &   int k=1,ii=1,kk=1,ret=-1;
+   14 &   for(int i=1;i<ARGV.n;++i)
+   15 &    {
+   16 &    // cout <<i<< " "<< ARGV[i] << " " <<(ARGV[i]=="-v") << " " << kk << "==" 
+   17 &    //      << n << " " << ARGV[i].rfind("dp") << " " <<ARGV[i].length-2  << endl;
+   18 &         
+   19 &        if(ARGV[i]=="-v") i++;
+   20 &        else if(ARGV[i]=="-fglut") i++;
+   21 &        else if(ARGV[i]=="-ffg") i++;
+   22 &        else if(ARGV[i]=="-glut") i++;
+   23 &        else if(ARGV[i]=="-f") i++;
+   24 &        else if(ARGV[i]=="-nw") ii;
+   25 &        else if(ARGV[i]=="-wait") ii;
+   26 &        else if(ARGV[i]=="-ne") ii;
+   27 &        else if(ARGV[i]=="-cd") ii;
+   28 &        //else if(ARGV[i].rfind(".edp")==ARGV[i].length-4 ) ii;
+   29 &        else if(i==1) ii;
+   30 &        else if(kk++==n) {ret=i;}
+   31 &       // else cout << " +++ \n";
+   32 &      }
+   33 &    //  cout << ret << endl;
+   34 &     return ret;
+   35 & }
+   36 & 
+   37 & func int usedARGV(string after)
+   38 & {
+   39 &   int ret=-1;
+   40 &   for(int i=ARGV.n-1;i>=0;--i)        
+   41 &        if(ARGV[i]==after) { ret=++i; break;}
+   42 &   if(ARGV.n<ret) ret=-1;
+   43 &   return ret;
+   44 & }
+   45 & 
+   46 & func int getARGV(int n,int default)
+   47 & {
+   48 &    int d=default;
+   49 &    int k=usedARGV(n);
+   50 &    if(k>0) d=strtol(ARGV[k]);
+   51 &     return d;
+   52 & }
+   53 & func real getARGV(int n,real default)
+   54 & {
+   55 &    real d=default;
+   56 &    int k=usedARGV(n);
+   57 &    if(k>0) d=strtod(ARGV[k]);
+   58 &    return d;
+   59 & }
+   60 & func string getARGV(int n,string default)
+   61 & {
+   62 &    string d=default;
+   63 &    int k=usedARGV(n);
+   64 &    if(k>0) d=ARGV[k];
+   65 &     return d;
+   66 & }
+   67 & 
+   68 & func int getARGV(string after,int default)
+   69 & {
+   70 &    int d=default;
+   71 &    int k=usedARGV(after);
+   72 &    if(k>0) d=strtol(ARGV[k]);
+   73 &     return d;
+   74 & }
+   75 & func real getARGV(string after,real default)
+   76 & {
+   77 &    real d=default;
+   78 &    int k=usedARGV(after);
+   79 &    if(k>0) d=strtod(ARGV[k]);
+   80 &    return d;
+   81 & }
+   82 & func string getARGV(string after,string default)
+   83 & {
+   84 &    string d=default;
+   85 &    int k=usedARGV(after);
+   86 &    if(k>0) d=ARGV[k];
+   87 &     return d;
+   88 & }
+   89 & 
+   90 & /*
+   91 & cout << getARGV(1,100) << endl;
+   92 & cout << getARGV(2,200.) << endl;
+   93 & cout << getARGV(3,"300.000") << endl;
+   94 & cout << getARGV("-n"," xxx") << endl;
+   95 & */
+   96 & ENDIFMACRO
+    8 @  macro getARGVidp 1 //
+    9 @  
+   10 @  
+   11 @  func int usedARGV(int n)
+   12 @ {
+   13 @   int k=1,ii=1,kk=1,ret=-1;
+   14 @   for(int i=1;i<ARGV.n;++i)
+   15 @    {
+   16 @    // cout <<i<< " "<< ARGV[i] << " " <<(ARGV[i]=="-v") << " " << kk << "==" 
+   17 @    //      << n << " " << ARGV[i].rfind("dp") << " " <<ARGV[i].length-2  << endl;
+   18 @         
+   19 @        if(ARGV[i]=="-v") i++;
+   20 @        else if(ARGV[i]=="-fglut") i++;
+   21 @        else if(ARGV[i]=="-ffg") i++;
+   22 @        else if(ARGV[i]=="-glut") i++;
+   23 @        else if(ARGV[i]=="-f") i++;
+   24 @        else if(ARGV[i]=="-nw") ii;
+   25 @        else if(ARGV[i]=="-wait") ii;
+   26 @        else if(ARGV[i]=="-ne") ii;
+   27 @        else if(ARGV[i]=="-cd") ii;
+   28 @        //else if(ARGV[i].rfind(".edp")==ARGV[i].length-4 ) ii;
+   29 @        else if(i==1) ii;
+   30 @        else if(kk++==n) {ret=i;}
+   31 @       // else cout << " +++ \n";
+   32 @      }
+   33 @    //  cout << ret << endl;
+   34 @     return ret;
+   35 @ }
+   36 @ 
+   37 @ func int usedARGV(string after)
+   38 @ {
+   39 @   int ret=-1;
+   40 @   for(int i=ARGV.n-1;i>=0;--i)        
+   41 @        if(ARGV[i]==after) { ret=++i; break;}
+   42 @   if(ARGV.n<ret) ret=-1;
+   43 @   return ret;
+   44 @ }
+   45 @ 
+   46 @ func int getARGV(int n,int default)
+   47 @ {
+   48 @    int d=default;
+   49 @    int k=usedARGV(n);
+   50 @    if(k>0) d=strtol(ARGV[k]);
+   51 @     return d;
+   52 @ }
+   53 @ func real getARGV(int n,real default)
+   54 @ {
+   55 @    real d=default;
+   56 @    int k=usedARGV(n);
+   57 @    if(k>0) d=strtod(ARGV[k]);
+   58 @    return d;
+   59 @ }
+   60 @ func string getARGV(int n,string default)
+   61 @ {
+   62 @    string d=default;
+   63 @    int k=usedARGV(n);
+   64 @    if(k>0) d=ARGV[k];
+   65 @     return d;
+   66 @ }
+   67 @ 
+   68 @ func int getARGV(string after,int default)
+   69 @ {
+   70 @    int d=default;
+   71 @    int k=usedARGV(after);
+   72 @    if(k>0) d=strtol(ARGV[k]);
+   73 @     return d;
+   74 @ }
+   75 @ func real getARGV(string after,real default)
+   76 @ {
+   77 @    real d=default;
+   78 @    int k=usedARGV(after);
+   79 @    if(k>0) d=strtod(ARGV[k]);
+   80 @    return d;
+   81 @ }
+   82 @ func string getARGV(string after,string default)
+   83 @ {
+   84 @    string d=default;
+   85 @    int k=usedARGV(after);
+   86 @    if(k>0) d=ARGV[k];
+   87 @     return d;
+   88 @ }
+   89 @ 
+   90 @ /*
+   91 @ cout << getARGV(1,100) << endl;
+   92 @ cout << getARGV(2,200.) << endl;
+   93 @ cout << getARGV(3,"300.000") << endl;
+   94 @ cout << getARGV("-n"," xxx") << endl;
+   95 @ */
+   96 @ 
+    7 : include "object.idp"load "msh3" (already loaded: msh3)
+    2 : include "MeshSurface.idp"load "msh3" (already loaded: msh3)
+    2 : load "medit"
+    3 : load "mmg" load: mmg 
+
+    4 : // 2 basic functions to build surface mesh 
+    5 : /*  Usage:
+    6 :   meshS   SurfaceHex(N,B,L,orient);
+    7 :   --   build the surface mesh of a 3d box 
+    8 :   where: for example:
+    9 :     int[int]  N=[nx,ny,nz]; //  the number of seg in the 3 direction
+   10 :     real [int,int]  B=[[xmin,xmax],[ymin,ymax],[zmin,zmax]]; // bounding bax  
+   11 :     int [int,int]  L=[[1,2],[3,4],[5,6]]; // the label of the 6 face left,right, front, back, down, right
+   12 :     orient the global orientation of the surface 1 extern (-1 intern)
+   13 : 
+   14 : 
+   15 :   func meshS Sphere(real R,real h,int L,int orient);
+   16 :   -- build a surface mesh of a sphere with 1 mapping (spheriale coordinate) 
+   17 :      where R is  the raduis, 
+   18 :      h is the mesh size  of  the shpere
+   19 :      L is the label the the sphere
+   20 :      orient the global orientation of the surface 1 extern (-1 intern
+   21 : 
+   22 :   func  meshS Icosahedron (int orientation)
+   23 :    -- build a Icosahedron meshS with given orientation.
+   24 :       with a region number go from 1  to 20 corresponding to the 20 faces
+   25 : 
+   26 :   func meshS Sphere20(real R,int N,int orient);
+   27 :   -- build a sphere  mesh form a Isocaedron with each traingle subdivide by N^2
+   28 :       with a region number go from 1  to 20 corresponding to the 20 faces
+   29 :      orient the global orientation of the surface 1 extern (-1 intern
+   30 : 
+   31 : */
+   32 : func meshS SurfaceHex(int[int] & N,real[int,int] &B ,int[int,int] & L,int orientation)
+ *** Warning  The identifier N hide a Global identifier  
+
+   33 : {
+   34 :     real x0=B(0,0),x1=B(0,1);
+   35 :     real y0=B(1,0),
+ *** Warning  The identifier y0 hide a Global identifier  
+y1=B(1,1);
+ *** Warning  The identifier y1 hide a Global identifier  
+
+   36 :     real z0=B(2,0),z1=B(2,1);
+   37 :     
+   38 :     int nx=N[0],ny=N[1],nz=N[2];
+   39 :     
+   40 :     mesh Thx = square(ny,nz,[y0+(y1-y0)*x,z0+(z1-z0)*y]);
+   41 :     mesh Thy = square(nx,nz,[x0+(x1-x0)*x,z0+(z1-z0)*y]);
+   42 :     mesh Thz = square(nx,ny,[x0+(x1-x0)*x,y0+(y1-y0)*y]);
+   43 :     
+   44 :     int[int] refx=[0,L(0,0)],refX=[0,L(0,1)];   //  Xmin, Ymax faces labels renumbering 
+   45 :     int[int] refy=[0,L(1,0)],refY=[0,L(1,1)];   //  Ymin, Ymax faces labesl renumbering 
+   46 :     int[int] refz=[0,L(2,0)],refZ=[0,L(2,1)];   //  Zmin, Zmax faces labels renumbering 
+   47 :     
+   48 :     meshS Thx0 = movemesh23(Thx,transfo=[x0,x,y],orientation=-orientation,region=refx);
+   49 :     meshS Thx1 = movemesh23(Thx,transfo=[x1,x,y],orientation=+orientation,region=refX);
+   50 :     meshS Thy0 = movemesh23(Thy,transfo=[x,y0,y],orientation=+orientation,region=refy);
+   51 :     meshS Thy1 = movemesh23(Thy,transfo=[x,y1,y],orientation=-orientation,region=refY);
+   52 :     meshS Thz0 = movemesh23(Thz,transfo=[x,y,z0],orientation=-orientation,region=refz);
+   53 :     meshS Thz1 = movemesh23(Thz,transfo=[x,y,z1],orientation=+orientation,region=refZ);
+   54 :     meshS Th= Thx0+Thx1+Thy0+Thy1+Thz0+Thz1;
+   55 :     return Th;
+   56 : }
+   57 : func meshS Ellipsoide (real RX,real RY,real RZ,real h,int L,real Ox,real Oy,real Oz,int orientation)
+   58 : {
+   59 :   mesh  Th=square(10,20,[x*pi-pi/2,2*y*pi]);  //  $]\frac{-pi}{2},frac{-pi}{2}[\times]0,2\pi[ $
+   60 :   //  a parametrization of a sphere 
+   61 :   func f1 =RX*cos(x)*cos(y)+Ox;
+   62 :   func f2 =RY*cos(x)*sin(y)+Oy;
+   63 :   func f3 =RZ*sin(x)+Oz;
+   64 :   //    partiel derivative 
+   65 :   func f1x= -RX*sin(x)*cos(y);   
+   66 :   func f1y= -RX*cos(x)*sin(y);
+   67 :   func f2x= -RY*sin(x)*sin(y);
+   68 :   func f2y= +RY*cos(x)*cos(y);
+   69 :   func f3x=-RZ*cos(x);
+   70 :   func f3y=0;
+   71 :   // the metric on the sphere  $  M = DF^t DF $
+   72 :   func m11=f1x^2+f2x^2+f3x^2;
+   73 :   func m21=f1x*f1y+f2x*f2y+f3x*f3y;
+   74 :   func m22=f1y^2+f2y^2+f3y^2;
+   75 :   
+   76 :   func perio=[[4,y],[2,y],[1,x],[3,x]];  // to store the periodic condition 
+   77 :   real hh=h;// hh  mesh size on unite sphere
+   78 :   real vv= 1/square(hh);
+   79 :   Th=adaptmesh(Th,m11*vv,m21*vv,m22*vv,IsMetric=1,periodic=perio);
+   80 :   Th=adaptmesh(Th,m11*vv,m21*vv,m22*vv,IsMetric=1,periodic=perio);
+   81 :   Th=adaptmesh(Th,m11*vv,m21*vv,m22*vv,IsMetric=1,periodic=perio);
+   82 :   Th=adaptmesh(Th,m11*vv,m21*vv,m22*vv,IsMetric=1,periodic=perio);
+   83 :   int[int] ref=[0,L];  
+   84 :   meshS  ThS= movemesh23(Th,transfo=[f1,f2,f3],orientation=orientation,reftri=ref);
+   85 :   ThS=mmgs(ThS,hmin=h,hmax=h,hgrad=2.);
+   86 :   return ThS;
+   87 : }
+   88 :  
+   89 : func meshS Ellipsoide (real RX,real RY,real RZ,real h,int L,int orientation)
+   90 : { 
+   91 :  return Ellipsoide (RX,RY,RZ,h,L,0.,0.,0.,orientation);
+   92 : }
+   93 : 
+   94 : func meshS Sphere(real R,real h,int L,int orientation)
+   95 : {
+   96 : 
+   97 :   return Ellipsoide(R,R,R,h,L,orientation);
+   98 : }
+   99 : 
+  100 : func meshS Sphere(real R,real h,int L,real Ox,real Oy,real Oz,int orientation)
+  101 : {
+  102 : 
+  103 :   return Ellipsoide(R,R,R,h,L,Ox,Oy,Oz,orientation);
+  104 : }
+  105 : 
+  106 : func meshS Icosahedron (int orientation,int wplot)
+  107 : {
+  108 : 	
+  109 : //===================================================================================
+  110 : //Angles utiles
+  111 : //===================================================================================
+  112 : real tan3pi10 = sqrt(25.+10.*sqrt(5.))/5.;//3pi/10 angle entre deux aretes du pentagone
+  113 : real sin3pi10 = (sqrt(5)+1)/4;//3pi/10 angle entre deux aretes du pentagone
+  114 : real cos3pi10 = sqrt(10-2*sqrt(5))/4;//3pi/10 angle entre deux aretes du pentagone
+  115 : 
+  116 : real cosdiedre = sqrt(5)/3; //angle diedre de l'icosaedre -pi/2
+  117 : real sindiedre = 2./3; //angle diedre de l'icosaedre -pi/2
+  118 : 
+  119 : real cosico = tan3pi10/sqrt(3); //angle entre une face de la pyramide pentagonale par rapport à l'horizontale
+  120 : real sinico = sqrt(1-square(cosico)); //angle entre une face de la pyramide pentagonale par rapport à l'horizontale
+  121 : 
+  122 : real sin2pi5 = sqrt(10+2*sqrt(5))/4; //2pi/5 angle pour la rotation des aretes du pentagone
+  123 : real cos2pi5 = (sqrt(5)-1)/4; //2pi/5 angle pour la rotation des aretes du pentagone
+  124 : 
+  125 : real cosicod = cosdiedre*cosico+sindiedre*sinico;//angle diedre -pi/2 - ico
+  126 : real sinicod = sindiedre*cosico-cosdiedre*sinico;//angle diedre -pi/2 - ico
+  127 : 
+  128 : 
+  129 : real sinpi3 = sqrt(3)/2; //angle du triangle equilateral
+  130 : 
+  131 : int n = 1;
+  132 : 
+  133 : real sinpi5 = cos3pi10;//pi/5 angle de décalage entre deux demi icosaedre
+  134 : real cospi5 = sin3pi10;//pi/5 angle de décalage entre deux demi icosaedre
+  135 : 
+  136 : real tanpi10 = sqrt(25.-10.*sqrt(5.))/5.;//pi/10 
+  137 : real h = 0.5*sqrt(3-square(tanpi10));//hauteur du prisme d'ordre 5;
+  138 : 
+  139 : //=================================================================================
+  140 : //Construction du triangle equilateral en 2D
+  141 : //=================================================================================
+  142 : border a(t=0,1){x=t; y=0; label =1;};
+  143 : border b(t=1,0.5){x=t; y=sqrt(3)*(1-t); label =2;};
+  144 : border c(t=0.5,0){x=t; y=sqrt(3)*(t); label =3;};
+  145 : mesh Triangle= buildmesh(a(n)+b(n)+c(n)); //traingle equilateral
+  146 : if(wplot>2) plot (cmm="Triangle",Triangle,wait=1);
+  147 : 
+  148 : func f = 1;
+  149 : 
+  150 : 
+  151 : meshS Triangle3 = movemesh23(Triangle,transfo=[x,0,y]);//trianglesup
+  152 : if(wplot>2) plot (cmm="Triangle3",Triangle3,wait=1); 
+  153 : 
+  154 : meshS TriangleS = change(fregion=1,movemeshS(Triangle3,transfo=[x,sinico*y+cosico*z,-cosico*y+sinico*z]));//rotation de -(pi - diedre) par rapport à l'axe des x pour former une face de la pyramide pentagonale
+  155 : if(wplot>2) plot (cmm="TriangleS",TriangleS,wait=1);
+  156 : //medit("face pyramide pentagonale",TriangleS);
+  157 : 
+  158 : meshS TriangleI = change(fregion=2,movemeshS(TriangleS,transfo=[x,-cosdiedre*y+sindiedre*z,-sindiedre*y-cosdiedre*z],orientation=-1));//triangle inf rotation de l'angle diedre par rapport au triangle sup
+  159 : if(wplot>2) plot (cmm="TriangleI",TriangleI,wait=1);
+  160 : 
+  161 : meshS Triangles = TriangleI+TriangleS;
+  162 : 
+  163 : if(wplot>1) plot (cmm="Triangles",Triangles,wait=1);
+  164 : //medit("face pyramide pentagonale + face antiprisme d'ordre 5",Triangles);
+  165 : 
+  166 : meshS T1 = change(movemeshS(Triangles,transfo=[x-0.5,y-sinpi3*cosico,z],orientation=1),fregion = region);//translation pour que la figure soit sur le bord du pentagone
+  167 : meshS T2 = change(movemeshS(T1,transfo=[cos2pi5*x-sin2pi5*y,sin2pi5*x+cos2pi5*y,z],orientation=1),fregion = region+2);;
+  168 : meshS T3 = change(movemeshS(T2,transfo=[cos2pi5*x-sin2pi5*y,sin2pi5*x+cos2pi5*y,z]),fregion = region+2);;
+  169 : meshS T4 = change(movemeshS(T3,transfo=[cos2pi5*x-sin2pi5*y,sin2pi5*x+cos2pi5*y,z]),fregion = region+2);;
+  170 : meshS T5 = change(movemeshS(T4,transfo=[cos2pi5*x-sin2pi5*y,sin2pi5*x+cos2pi5*y,z]),fregion = region+2);;
+  171 : 
+  172 : meshS Tdemi= T1+T2+T3+T4+T5;//moitié de l'icosaedre
+  173 : meshS Tdemi0 = movemeshS(Tdemi,transfo=[x,y,z+0.5*h]);//moitié supérieure
+  174 : meshS Tdemi1 = movemeshS(Tdemi0,transfo=[x,y,-z]);//moitié inférieure
+  175 : meshS Tdemi1rot = change(movemeshS(Tdemi1,transfo=[cospi5*x-sinpi5*y,sinpi5*x+cospi5*y,z],orientation=-1),fregion = region+10);//rotation de la moitié inférieure pour les emboiter
+  176 : meshS Ticosaedre = Tdemi0+Tdemi1rot;
+  177 : //Ticosaedre=trunc(Ticosaedre,1,split=5);
+  178 : if(wplot) plot(Ticosaedre,wait=1);
+  179 : //cout << regions(Ticosaedre) << endl; 
+  180 : return Ticosaedre;
+  181 : }
+  182 : 
+  183 : func  meshS Icosahedron (int orientation)
+  184 : {
+  185 :  return Icosahedron(orientation,0);
+  186 : }
+  187 : func meshS Sphere20 (real R,int N,int orientation,int wplot)
+ *** Warning  The identifier N hide a Global identifier  
+
+  188 : {// Isocaedre regulier !!!!  Thank G. Vergez ..
+  189 : meshS Ticosaedre = Icosahedron(orientation,wplot);
+  190 : Ticosaedre=trunc(Ticosaedre,1,split=N);
+  191 : if(wplot) plot(cmm="Icosaedre",Ticosaedre,wait=1);
+  192 : 
+  193 : //=================================================================================
+  194 : //Construction de la sphere 3D
+  195 : //=================================================================================
+  196 : func metric =dist(x,y,z)/R;
+  197 : meshS Th = movemeshS(Ticosaedre,transfo=[x/metric,y/metric,z/metric]); 
+  198 : if(wplot) plot (cmm="Th",Th,wait=1);
+  199 : return Th;
+  200 : }
+  201 : 
+  202 : func meshS Sphere20 (real R,int N,int orientation)
+ *** Warning  The identifier N hide a Global identifier  
+
+  203 : {
+  204 :   return Sphere20(R,N,orientation,0);
+  205 : }
+  206 : 
+  207 : /*  test: 
+  208 :  load "tetgen" 
+  209 :   {   
+  210 :     real hs = 0.1;  // mesh size on sphere 
+  211 :     int[int]  N=[20,20,20];
+  212 :     real [int,int]  B=[[-1,1],[-1,1],[-1,1]];
+  213 :     int [int,int]  L=[[1,2],[3,4],[5,6]];
+  214 :     
+  215 :     ////////////////////////////////
+  216 :     meshS ThH = 
+  217 : 	(N,B,L,1);
+  218 :     meshS ThS =Sphere(0.5,hs,7,1); // "gluing" surface meshs to tolat boundary meshes
+  219 :     cout << " xxxx" << ThH.nv << " " << ThS.nv << endl;
+  220 :     
+  221 :     meshS ThHS=ThH+ThS;
+  222 :     savemesh(ThHS,"Hex-Sphere.mesh");
+  223 :     exec("ffmedit Hex-Sphere.mesh;rm Hex-Sphere.mesh");
+  224 :     
+  225 :     real voltet=(hs^3)/6.;
+  226 :     cout << " voltet = " << voltet << endl;
+  227 :     real[int] domaine = [0,0,0,1,voltet,0,0,0.7,2,voltet];
+  228 :   
+  229 :     mesh3 Th = tetg(ThHS,switch="pqaAAYYQ",nbofregions=2,regionlist=domaine);    
+  230 :     medit("Cube-With-Ball",Th);
+  231 :   }
+  232 : 
+  233 : */
+    3 : 
+    4 : //----------------------------------------------
+    5 : // PATHS
+    6 : 
+    7 : string icoSphereDir = "../pkgMesh/meshSicosphere/meshS/";
+    8 : 
+    9 : //----------------------------------------------
+   10 : // FUNCTION: READER
+   11 : 
+   12 : func string[int] readConfig(string filename){
+   13 :   string[int] config(0);
+   14 :   string line;
+   15 :   int cnt = 0;
+   16 :   ifstream f(filename);
+   17 :   getline(f, line);// header
+   18 :   while(f.good()){
+   19 :     getline(f, line);
+   20 :     if(line == "") continue;
+   21 :     config.resize(cnt+1);
+   22 :     config[cnt] = line;
+   23 :     cnt++;
+   24 :   }
+   25 :   return config;
+   26 : }
+   27 : 
+   28 : func bool checkIsEmpty(string[int] & config){
+   29 :     if (config.n == 0){
+   30 :         cout << "Warning: config file is empty" << endl;
+   31 :         return true;
+   32 :     }else{
+   33 :         return false;
+   34 :     }
+   35 : }
+   36 : 
+   37 : func string getLineByIndex(string & line, int index){
+   38 :     int len = line.length; int startLine = 0; int endLine = 0;
+   39 :     string part;
+   40 :     for( int ind = 0; ind < index + 1; ind++){
+   41 :         if (startLine >= len){
+   42 :             cout << "Warning: index out of range" << endl; return "";
+   43 :         }
+   44 :         endLine = line.find(",", startLine);
+   45 :         part = line( startLine : (endLine-1) );
+   46 :         startLine = endLine+1;
+   47 :     }
+   48 :     return part;
+   49 : }
+   50 : 
+   51 : func string getType(string & line){
+   52 :     return getLineByIndex(line, 0);
+   53 : }
+   54 : 
+   55 : func string[int] getType(string[int] & config){
+   56 :     int numLines = config.n;
+   57 :     string[int] types(numLines);
+   58 :     for( int indLine = 0; indLine < numLines; indLine++) types[indLine] = getType(config[indLine]);
+   59 :     return types;
+   60 : }
+   61 : 
+   62 : func real[int] getPosition(string & line){
+   63 :     real[int] coord(3);
+   64 :     coord[0] = atof(getLineByIndex(line, 2));
+   65 :     coord[1] = atof(getLineByIndex(line, 3));
+   66 :     coord[2] = atof(getLineByIndex(line, 4));
+   67 :     return coord;
+   68 : }
+   69 : 
+   70 : func real[int] getPosition(string[int] & config){
+   71 :     int numLines = config.n;
+   72 :     real[int] coords(3*numLines);
+   73 :     for( int indLine = 0; indLine < numLines; indLine++){
+   74 :         real[int] coord = getPosition(config[indLine]);
+   75 :         for (int indCoord = 0; indCoord < 3; indCoord++){
+   76 :             coords[3*indLine + indCoord] = coord[indCoord];
+   77 :         }
+   78 :     }
+   79 :     return coords;
+   80 : }
+   81 : 
+   82 : func int getTheta(string & line){
+   83 :     return atoi(getLineByIndex(line, 1));
+   84 : }
+   85 : 
+   86 : func int[int] getTheta(string[int] & config){
+   87 :     int numLines = config.n;
+   88 :     int[int] theta(numLines);
+   89 :     for( int indLine = 0; indLine < numLines; indLine++) theta[indLine] = getTheta(config[indLine]);
+   90 :     return theta;
+   91 : }
+   92 : 
+   93 : func int getNumUnique( int[int] & Arr ){
+   94 :     Arr.sort;
+   95 :     int cnt = 0;
+   96 :     for( int indLine = 0; indLine < Arr.n; indLine++){
+   97 :         if (indLine == 0){
+   98 :             cnt++;
+   99 :         }else{
+  100 :             if (Arr[indLine] != Arr[indLine-1]){
+  101 :                 cnt++;
+  102 :             }
+  103 :         }
+  104 :     }
+  105 :     return cnt;
+  106 : }
+  107 : 
+  108 : func int getCardTheta(string[int] & config){
+  109 :     int[int] Theta = getTheta(config);
+  110 :     return getNumUnique(Theta);
+  111 : }
+  112 : 
+  113 : 
+  114 : func real[int] getParameter(string & line){
+  115 :     real[int] parameter(4);
+  116 :     for (int indParam = 0; indParam < 4; indParam++){
+  117 :         parameter[indParam] = atof(getLineByIndex(line, 5+indParam));
+  118 :     }
+  119 :     return parameter;
+  120 : }
+  121 : 
+  122 : func real[int] getParameter(string[int] & config){
+  123 :     int numLines = config.n;
+  124 :     real[int] parameters(4*numLines);
+  125 :     for( int indLine = 0; indLine < numLines; indLine++){
+  126 :         real[int] parameter = getParameter(config[indLine]);
+  127 :         for (int indParam = 0; indParam < 4; indParam++){
+  128 :             parameters[4*indLine + indParam] = parameter[indParam];
+  129 :         }
+  130 :     }
+  131 : }
+  132 : 
+  133 : //----------------------------------------------
+  134 : // FUNCTION: MESH
+  135 : 
+  136 : func meshS loadMeshS(string & type, real[int] Parameter){
+  137 :   meshS ThS;
+  138 :   if (type == "icoSphere"){
+  139 :     ThS = readmeshS(icoSphereDir + round(Parameter[0]) + ".mesh");
+  140 :   }else{
+  141 :     cout << "Warning: type not found" << endl;
+  142 :   }
+  143 :   return ThS;
+  144 : }
+  145 : 
+  146 : func bool shiftMeshS(meshS & ThS, real[int] Coord, int theta){
+  147 : 
+  148 :   int orientation = 1;
+  149 : 
+  150 :   /* set the label change */
+  151 :   int[int] changeLabel = [0, theta + 7];
+  152 :   // shift the mesh
+  153 :   ThS = movemeshS(ThS, 
+  154 :     /* set the transformation of the grid */ 
+  155 :     transfo = [
+  156 :       (x + Coord[0]), 
+  157 :       (y + Coord[1]), 
+  158 :       (z + Coord[2])
+  159 :       ],
+  160 :     /* change the labels */
+  161 :     label = changeLabel,
+  162 :     region = changeLabel,
+  163 :     orientation = orientation
+  164 :   );
+  165 : 
+  166 :   return true;
+  167 : }
+  168 : 
+  169 : func bool formMeshS(meshS & ThS, string & type, real[int] Coord, real[int] Parameter){
+  170 : 
+  171 :   if (type == "icoSphere"){
+  172 :     
+  173 :     ThS = movemeshS(ThS, 
+  174 :       /* set the transformation of the grid */ 
+  175 :       transfo = [
+  176 :         (Parameter[1]*( x - Coord[0] ) + Coord[0]), 
+  177 :         (Parameter[2]*( y - Coord[1] ) + Coord[1]),
+  178 :         (Parameter[3]*( z - Coord[2] ) + Coord[2])
+  179 :       ]
+  180 :     );
+  181 : 
+  182 :     return true;
+  183 :   }else{
+  184 :     cout << "Warning: type not found" << endl;
+  185 :     return false;
+  186 :   }
+  187 : }
+  188 : 
+  189 : //----------------------------------------------
+  190 : 
+  191 : 
+    8 : include "helperss.idp" Error opening file helperss.idp in: 
+  -- try  :"base/helperss.idp"
+  -- try  :"helperss.idp"
+  -- try  :"/usr/freefem/lib/ff++/4.14/idp/helperss.idp"
+  -- try  :"base/helperss.idp"
+
+ Error line number 8, in file base/_test_.edp, before  token helperss.idp
+lex: Error input opening file 
+  current line = 8 mpirank 0 / 1
+Compile error : lex: Error input opening file 
+	line number :8, helperss.idp
+error Compile error : lex: Error input opening file 
+	line number :8, helperss.idp
+ code = 1 mpirank: 0

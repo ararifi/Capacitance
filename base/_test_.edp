@@ -1,0 +1,27 @@
+//-------------------------------------------------------
+// LOAD & INCLUDES
+
+// PACKAGE LOADING
+load "msh3"
+include	"getARGV.idp"
+include "object.idp"
+include "helperss.idp"
+
+// --- FreeFEM ---
+load "PETSc"
+macro dimension()3//
+macro partitioner()parmetis//
+include "macro_ddm.idp"
+
+string configFile = getARGV("-c", "config.csv");
+
+string meshFile = getARGV("-m", "mesh.mesh");
+
+string outputDir = getARGV("-o", "../output");
+
+string outputName = getARGV("-n", "sim");
+
+cout << "Config file: " << configFile << endl;
+cout << "Mesh file: " << meshFile << endl;
+cout << "Output directory: " << outputDir << endl;
+cout << "Output name: " << outputName << endl;

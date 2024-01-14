@@ -1,5 +1,14 @@
 #!/bin/bash
 
+#SBATCH -J CapacityCoefficient
+#SBATCH -A m2_jgu-binaryhpc 
+#SBATCH -p parallel
+#SBATCH -e ./data/slurmGlobal/slurm-%A-%a.err
+#SBATCH -o ./data/slurmGlobal/slurm-%A-%a.out
+#SBATCH -C skylake
+#SBATCH --ntasks-per-node=32
+#SBATCH --spread-job
+
 #------------------------------------------------------------
 # CONFIG 
 #------------------------------------------------------------
@@ -14,15 +23,21 @@ source config.sh
 simName=""
 meshName=""
 configName=""
-cpus="4"
 
-while getopts 's:m:c:n:' opt
+cpus="4"
+mem="1000"
+
+IS_CLUSTER=false
+
+while getopts 's:m:c:N:M:C' opt
 do 
     case $opt in
         s) simName="$OPTARG";;
         m) meshName="$OPTARG";;
         c) configName="$OPTARG";;
-        n) cpus="$OPTARG"
+        N) cpus="$OPTARG";;
+        M) mem="$OPTARG";;
+        C) IS_CLUSTER=true;;
     esac
 done
 
@@ -35,18 +50,20 @@ configFile=""; meshFile=""
 if [ ! -z "$meshName" ]; then
     
     meshFile="$dirMesh/$meshName.mesh"
+
+    logMeshFile="$dirMesh/$meshName.logMesh"
     
     if [ ! -f "$meshFile" ]; then
         echo "Error: Mesh file $meshFile does not exist."
         exit 1
     fi
     
-    if [ ! -f "$meshFile.logMesh" ]; then
-        echo "Error: Mesh file $meshFile exists but no logMesh file found."
+    if [ ! -f "$logMeshFile" ]; then
+        echo "Error: Mesh file $logMeshFile exists but no logMesh file found."
         exit 1
     fi
 
-    configFile="$( cat "$meshFile.logMesh" | head -n 3 | tail -n 1 )"
+    configFile="$( cat "$logMeshFile" | head -n 3 | tail -n 1 )"
 
 else
     if [ -z "$configName" ]; then
@@ -84,4 +101,26 @@ echo "$meshFile" >> "$outputFile"
 
 
 # run simulation 
-mpirun -np "$cpus" FreeFem++-mpi laplace.edp -c "$configFile" -m "$meshFile" -o "$dirOutput" -n "$simName"
+if ! $IS_CLUSTER; then
+    echo "Running simulation locally..."
+
+    mpirun -np "$cpus" FreeFem++-mpi laplace.edp -c "$configFile" -m "$meshFile" -o "$dirOutput" -n "$simName"
+    # FreeFem++-mpi laplace.edp -c "$configFile" -m "$meshFile" -o "$dirOutput" -n "$simName"
+    exit 0
+else
+    echo "Running simulation on cluster..."
+    
+    jobID=""
+    if [[ -z "$SLURM_ARRAY_JOB_ID" ]]; then
+        jobID="${SLURM_JOB_ID}_0"
+    else
+        jobID="${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}"
+    fi
+    jobName="${simName}_${jobID}"
+
+    srun --exact -u -c1 -n${cpus} --mem-per-cpu=${mem}M --mpi=pmi2 \
+        -J ${jobName} -e "./${dirSlurm}/${jobName}.err" -o "./${dirSlurm}/${jobName}.out" \ 
+        FreeFem++-mpi laplace.edp -c "$configFile" -m "$meshFile" -o "$dirOutput" -n "$simName"
+    exit 0
+fi
+        
