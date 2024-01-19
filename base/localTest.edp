@@ -1,0 +1,68 @@
+verbosity=1;
+load "msh3"
+load "tetgen2"
+load "medit"
+include "MeshSurface.idp"
+mesh3 Th;
+
+real hs = 0.2;  // mesh size on sphere 
+int[int]  NN=[2,2,2];
+real b = 90.0;
+real [int,int]  BB=[[-b/2.,b/2.],[-b/2.,b/2.],[-b/2.,b/2.]];
+int [int,int]  LL=[[1,2],[3,4],[5,6]];
+
+////////////////////////////////
+meshS ThHS = readmeshS("../pkgMesh/meshSicosphere/meshS/10.mesh");
+int[int] changeLabel = [0, 8]; int orientation = 1;
+ThHS = movemeshS(ThHS, 
+    /* set the transformation of the grid */ 
+    /* change the labels */
+    region = changeLabel
+  );
+ThHS = SurfaceHex(NN,BB,LL,1)+ThHS; // "gluing" surface meshs to tolat boundary meshes
+real voltet=(hs^3)/6.;
+cout << " voltet = " << voltet << endl;
+real[int] domaine = [b/2 * 0.99,0,0,1,b^3];//0,0,0.7,2,voltet];
+real [int] holes = [0, 0, 0];
+Th = tetg(ThHS,switch="pYq1.6/18.0aA",nbofregions=1, nbofholes=1,regionlist=domaine, holelist=holes);    
+
+// Th = readmesh3("./test.mesh");
+// Tetrahelize the interior of the cube with tetgen
+medit("tetg",Th,wait=1);
+//savemesh(Th,"Th-hex-sph.mesh");
+// FFCS: testing 3d plots
+plot(Th,wait=1);
+ 
+
+
+
+fespace Ph(Th,P0);
+verbosity=50;
+fespace Vh(Th,P1,periodic=[[3,x,z],[4,x,z],[1,y,z],[2,y,z],[5,x,y],[6,x,y]]);// back and front
+verbosity=1;
+Ph reg=region;
+
+cout << "  centre = " << reg(0,0,0) << endl;
+cout << " exterieur = " << reg(0,0,0.7) << endl;
+
+macro Grad(u) [dx(u),dy(u),dz(u)] // EOM
+
+Vh uh,vh;
+real x0=0.3,y0=0.4,z0=06;
+func f= sin(x*2*pi+x0)*sin(y*2*pi+y0)*sin(z*2*pi+z0);
+real gn = 1.;
+real cf= 1;
+problem P(uh,vh,solver=sparsesolver)=
+     int3d(Th,1)( Grad(uh)'*Grad(vh)*100) 
+  +  int3d(Th,2)( Grad(uh)'*Grad(vh)*2) 
+  + int3d(Th) (vh*f)
+//  + on(-1,uh=-1) + on(1,uh=1) 
+//  + int2d(Th,2,-2)(vh*gn)
+//  + int2d(Th,3,-3)(cf*vh*uh)
+  ; 
+  
+  P;
+
+//plot(uh,wait=1, nbiso=6);
+//medit("   uh ",Th, uh,wait=1); 
+
