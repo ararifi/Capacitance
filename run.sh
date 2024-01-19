@@ -73,7 +73,7 @@ else
 
     configFile="$dirConfig/$configName.csv"
     if [ ! -f "$configFile" ]; then
-        echo "Error: Config file $dirConfig/$configName.csv does not exist"
+        echo "Error: Config file $configFile does not exist"
         exit 1
     fi
 
@@ -120,7 +120,7 @@ else
 
     srun --exact -u -c1 -n${cpus} --mem-per-cpu=${mem}M --mpi=pmi2 \
         -J ${jobName} -e "./${dirSlurm}/${jobName}.err" -o "./${dirSlurm}/${jobName}.out" \
-        apptainer run $mogon_setup FreeFem++-mpi laplace.edp -c "$configFile" -m "$meshFile" -o "$dirOutput" -n "$simName"
+        apptainer run $mogon_setup FreeFem++-mpi laplacePeriodic.edp -c "$configFile" -m "$meshFile" -o "$dirOutput" -n "$simName"
     exit 0
 fi
         

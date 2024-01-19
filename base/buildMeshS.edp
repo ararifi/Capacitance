@@ -19,7 +19,7 @@ icoSphereDir = getARGV("-i", "icosphere");
 //-------------------------------------------------------
 // SETTINGS
 
-real boxSize = 20000;
+real boxSize = 900;
 
 //-------------------------------------------------------
 // SET BOX */
@@ -28,7 +28,7 @@ meshS ThS;
     /* ----- BOX ----- */
 
     /* number of elements */
-    int[int] dimBoxNumElem = [1, 1, 1];
+    int[int] dimBoxNumElem = [50, 50, 50];
 
     /* box (size-)dimension */
     real [int,int] B = [[-boxSize/2., boxSize/2.], 
@@ -69,12 +69,30 @@ for( int ind = 0; ind < numObjects; ind++ ){
     // ---------------------------------
 
     ThSObjects[ind] = ThSObject;
+
+    if( (ind + 1) % int(ceil(numObjects/10)) == 0 ){
+        cout << "Loaded " << ind + 1 << " of " << numObjects << " objects." << endl;
+    }
 }
 
 // MERGE OBJECTS
-for( int ind = 0; ind < numObjects; ind++ ){
-    ThS = ThS + ThSObjects[ind];
+int cnt = 0;
+while(cnt < numObjects){
+    meshS temp500;
+    int cnt500 = numObjects - cnt > 500 ? 500 : numObjects - cnt;
+    for( int ind = 0; ind < cnt500; ind++ ){
+        temp500 = ThSObjects[cnt] + temp500;
+        cnt++;
+        if( (cnt + 1) % int(ceil(numObjects/10)) == 0 ){
+            cout << "Stored " << cnt + 1 << " of " << numObjects << " objects." << endl;
+        }
+    }
+    ThS = temp500 + ThS;
 }
+
+
+
+
 
 // SAVE MESH
 savemesh( ThS, meshSFile );

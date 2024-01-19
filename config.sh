@@ -21,6 +21,7 @@ dirOutput="$dirRoot/output"
 dirMesh="$dirRoot/mesh"
 dirConfig="$dirRoot/config"
 dirSlurm="$dirRoot/slurm"
+dirSlurmMesh="$dirRoot/slurmMesh"
 
 dirBase="base"
 dirIco="pkgMesh/meshSicosphere/meshS/"
