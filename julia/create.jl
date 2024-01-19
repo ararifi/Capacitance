@@ -76,13 +76,15 @@ end
 # ADD CONDUCTORS
 #-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-
 
-function addIco( config, theta, positionX, positionY, positionZ, resolution, radiusX, radiusY, radiusZ )
+function addIco( config, theta, positionX, positionY, positionZ, resolution, radiusX, radiusY, radiusZ, noCheck=false )
     # check overlap
-    for row in eachrow(config)
-        if row.objectType == "icoSphere"
-            if check_overlap([positionX, positionY, positionZ], [radiusX, radiusY, radiusZ], 
-                    [row.positionX, row.positionY, row.positionZ], [row.objectParameter2, row.objectParameter3, row.objectParameter4])
-                return false
+    if !noCheck
+        for row in eachrow(config)
+            if row.objectType == "icoSphere"
+                if check_overlap([positionX, positionY, positionZ], [radiusX, radiusY, radiusZ], 
+                        [row.positionX, row.positionY, row.positionZ], [row.objectParameter2, row.objectParameter3, row.objectParameter4])
+                    return false
+                end
             end
         end
     end
@@ -178,9 +180,15 @@ func bool setGrid(int offsetInd, int num, real[int] & Mid, real sizeLBox){
 
 
 
-function cubicArray( dimension, size, config, theta, resolution, radius1, radius2, radius3, fAdd=false )
+function cubicArray( dimension, size, config, theta, resolution, radius1, radius2, radius3, fAdd=false, noCheck=false )
     # center the array
-    offset = - size * ( floor(dimension/2.0) - ((dimension+1) % 2)/2.0  );
+    #offset = - size * ( floor(dimension/2.0) - ((dimension+1) % 2)/2.0  );
+    offset = 0.0;
+    if dimension%2 == 0
+        offset = - size * (dimension/2.0 - 0.5)
+    else
+        offset = - size * ( (dimension + 1)/2.0 )
+    end
     # set the particles
     pos = zeros(3)
     for ind = 1:dimension^3
@@ -198,7 +206,7 @@ function cubicArray( dimension, size, config, theta, resolution, radius1, radius
         end
 
         if !fAdd
-            addIco( config, theta_, pos[1], pos[2], pos[3], resolution, radius1, radius2, radius3 )
+            addIco( config, theta_, pos[1], pos[2], pos[3], resolution, radius1, radius2, radius3, noCheck )
         else
             fAddIco( config, theta_, pos[1], pos[2], pos[3], resolution, radius1, radius2, radius3 )
         end
