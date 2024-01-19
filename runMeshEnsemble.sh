@@ -17,14 +17,12 @@ configName=""
 meshName=""
 cpus="1"
 
-while getopts 's:m:c:N:M:' opt
+while getopts 'm:c:M:' opt
 do 
     case $opt in
         # specifically the prefix like name_ind
-        s) simName="$OPTARG";;
         m) meshName="$OPTARG";;
         c) configName="$OPTARG";;
-        N) cpus="$OPTARG";;
         M) mem="$OPTARG";;
     esac
 done
@@ -32,11 +30,6 @@ done
 if [ -z "$configName" ]; then
     echo "ERROR: No config name provided. Exiting..."
     exit 1
-fi
-
-if [ -z "$simName" ]; then
-    simName="$configName"
-    echo "WARNING: No simulation name provided. Using config name instead: $simName"
 fi
 
 if [ -z "$meshName" ]; then 
@@ -48,20 +41,15 @@ fi
 # RUN
 #------------------------------------------------------------
 
-configNames="$( find $dirConfig -maxdepth 1 -name "${configName}*" -type f -exec basename {} \; | sed 's/\.[^.]*$//' )"
+configNames="$( find $dirConfig -maxdepth 1 -name "${configName}*" -type f -exec basename {} \; | sed 's/\.[^.]*$//' | sed 's/\.[^.]*$//' )"
 # extract the config names without suffix
-indices="$( echo "$configNames" | grep -oP '(?<=_)\d+' | sort -n )"
+indices="$( echo "$configNames" | grep -oP '\d+' | sort -n )"
+
 if [ -z "$meshName" ]; then
-    echo $configNames | tr ' ' '\n' | parallel "./run.sh -s "{}" -c "{}"  -N "$cpus" -M "$mem" -C"
+    echo $configNames | tr ' ' '\n' | parallel "./runMesh.sh -m "{}" -c "{}" -M "$mem" -C"
 else
-    echo $indices | tr ' ' '\n' | parallel "./run.sh -s "${simName}_{}" -c "${configName}_{}" -m "${meshName}_{}" -N "$cpus" -M "$mem" -C"
+    echo $indices | tr ' ' '\n' | parallel "./runMesh.sh -m "${meshName}_{}"  -c "${configName}_{}" -M "$mem" -C"
 fi
-
-
-
-
-
-
 
 #./run.sh -s ${simName}_${ind} -c ${configName}_${ind} -n ${cpus} 
 

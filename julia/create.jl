@@ -8,7 +8,7 @@ using Random
 # CHECK FOR OVERLAP
 #-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-
 
-min_spacing = 1e-3;
+min_spacing = 1e-2; # 1e-2 * 100 mum = 1 mum
 
 # Ellipsoid equation function
 function ellipsoid_eq(x, center, radii)
@@ -40,6 +40,12 @@ function check_overlap(center1, radii1, center2, radii2)
     if center1 == center2
         return true
     end
+
+    min_radius1 = minimum(radii1); min_radius2 = minimum(radii2)
+    if spheres_overlap(center1, min_radius1, center2, min_radius2)
+        return true
+    end	
+
 
 
     # Calculate the radii of the enveloping spheres
@@ -76,13 +82,15 @@ end
 # ADD CONDUCTORS
 #-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-
 
-function addIco( config, theta, positionX, positionY, positionZ, resolution, radiusX, radiusY, radiusZ )
+function addIco( config, theta, positionX, positionY, positionZ, resolution, radiusX, radiusY, radiusZ, noCheck=false )
     # check overlap
-    for row in eachrow(config)
-        if row.objectType == "icoSphere"
-            if check_overlap([positionX, positionY, positionZ], [radiusX, radiusY, radiusZ], 
-                    [row.positionX, row.positionY, row.positionZ], [row.objectParameter2, row.objectParameter3, row.objectParameter4])
-                return false
+    if !noCheck
+        for row in eachrow(config)
+            if row.objectType == "icoSphere"
+                if check_overlap([positionX, positionY, positionZ], [radiusX, radiusY, radiusZ], 
+                        [row.positionX, row.positionY, row.positionZ], [row.objectParameter2, row.objectParameter3, row.objectParameter4])
+                    return false
+                end
             end
         end
     end
@@ -176,17 +184,31 @@ func bool setGrid(int offsetInd, int num, real[int] & Mid, real sizeLBox){
 =#
 
 
+function getIndex( config, center, radius )
+    IND = Int64[]
+    for (ind, row) in enumerate(eachrow(config))
+        if check_overlap([center[1], center[2], center[3]], [radius, radius, radius], 
+                [row.positionX, row.positionY, row.positionZ], [row.objectParameter2, row.objectParameter3, row.objectParameter4])
+            push!(IND, ind)
+        end
+    end
+    return IND
+end
 
-
-function cubicArray( dimension, size, config, theta, resolution, radius1, radius2, radius3, fAdd=false )
+function cubicArray!( dimension, size, config, theta, resolution, radius1, radius2, radius3, fAdd=false, noCheck=false )
     # center the array
-    offset = - size * ( floor(dimension/2.0) - ((dimension+1) % 2)/2.0  );
+    offset = 0.0;
+    if dimension%2 == 0
+        offset = - size * (dimension / 2.0 - 0.5)
+    else
+        offset = - size * ( (dimension - 1) / 2.0 )
+    end
     # set the particles
     pos = zeros(3)
     for ind = 1:dimension^3
-        pos[1] = size * (ind % dimension) + offset
-        pos[2] = size * (div(ind, dimension) % dimension) + offset
-        pos[3] = size * (div(ind, dimension^2) % dimension) + offset
+        pos[1] = size * ((ind - 1) % dimension) + offset
+        pos[2] = size * (div(ind - 1, dimension) % dimension) + offset
+        pos[3] = size * (div(ind - 1, dimension^2) % dimension) + offset
 
         if length(theta) == 1
             theta_ = theta[1]
@@ -198,9 +220,27 @@ function cubicArray( dimension, size, config, theta, resolution, radius1, radius
         end
 
         if !fAdd
-            addIco( config, theta_, pos[1], pos[2], pos[3], resolution, radius1, radius2, radius3 )
+            addIco( config, theta_, pos[1], pos[2], pos[3], resolution, radius1, radius2, radius3, noCheck )
         else
             fAddIco( config, theta_, pos[1], pos[2], pos[3], resolution, radius1, radius2, radius3 )
         end
+
+        # print every 10%
+        if false#ind % Int(div(dimension^3,10)) == 0
+            println("$(ind/(dimension^3)*100) %")
+        end        
+
     end
+end
+
+function LinToMulti(ind, dimension)
+    x = Int((ind - 1) % dimension + 1)
+    y = Int(div((ind - 1) , dimension) % dimension + 1)
+    z = Int(div((ind - 1) , (dimension^2)) + 1)
+    return (x, y, z)
+end
+
+function MultiToLin(x, y, z, dimension)
+    ind = Int((z - 1) * dimension^2 + (y - 1) * dimension + x)
+    return ind
 end

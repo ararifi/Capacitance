@@ -45,21 +45,39 @@ function read_capacitance(filepath)
 end
 
 # Function read filepath in order to obtain config and data
-function read_data( dataPath, dataName )
-    configFile=""
-    dataLogFile=dataPath*"/"*dataName*".log"
+function read_data(dataPath, dataName)
+    dataLogFile = joinpath(dataPath, dataName * ".log")
+    capFile = joinpath(dataPath, "cap_" * dataName * ".log")
+
+    # Check if dataLogFile exists
+    if !isfile(dataLogFile)
+        error("dataLogFile does not exist: ", dataLogFile)
+    end
+
+    configFile = ""
     open(dataLogFile, "r") do file
         lines = readlines(file)
         if length(lines) >= 4
             configFile = lines[4]
         else
-            return "File does not contain enough lines"
+            error("dataLogFile does not contain enough lines")
         end
     end
 
-    config = read_csv("../"*configFile)
+    configFilePath = joinpath("..", configFile)
+    # Check if configFile exists
+    if !isfile(configFilePath)
+        error("configFile does not exist: ", configFilePath)
+    end
 
-    cap = read_capacitance(dataPath*"/cap_"*dataName*".log")
+    config = read_csv(configFilePath)
+
+    # Check if capacitance file exists
+    if !isfile(capFile)
+        error("Capacitance file does not exist: ", capFile)
+    end
+
+    cap = read_capacitance(capFile)
     return config, cap
 end
 
