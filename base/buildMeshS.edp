@@ -28,7 +28,7 @@ meshS ThS;
     /* ----- BOX ----- */
 
     /* number of elements */
-    int[int] dimBoxNumElem = [1, 1, 1];
+    int[int] dimBoxNumElem = [50, 50, 50];
 
     /* box (size-)dimension */
     real [int,int] B = [[-boxSize/2., boxSize/2.], 

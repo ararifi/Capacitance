@@ -42,7 +42,7 @@ mesh3 Th;
     /* ----- 3D TETGEN MESH ----- */
     real[int] domain = [boxSize/2 * 0.99, 0, 0, 0, maxVol];
 
-    string mySwitch = "pq"+string(ratioRadiusEdge)+"/"+string(minDihedralAngle)+"aA" + addSwitch + "CV";
+    string mySwitch = "pq"+string(ratioRadiusEdge)+"/"+string(minDihedralAngle)+"aAY" + addSwitch + "CV";
 
     Th = tetg(
         ThS, 
