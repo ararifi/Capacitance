@@ -28,14 +28,14 @@ if(mpisize > 1) {
     fespace Wh(Th, Pk);
     fespace Ph(Th, P0);
     Ph part;
-    mesh ThExtended = Th;
+    mesh3 ThExtended = Th;
     {
         partitionerSeq(part[], Th, mpisize);
         fespace PhExtended(ThExtended, P0);
         PhExtended partExtended;
         partExtended = part;
         for(int i = 0; i < mpisize; ++i) {
-            mesh ThLocal = trunc(Th, abs(part - i) < 1e-6 && (y > 1-x-Th.hmax || y < -1-x+Th.hmax || y > 1+x-Th.hmax || y < -1+x+Th.hmax), label = 0);
+            mesh3 ThLocal = trunc(Th, abs(part - i) < 1e-6 && (y > 1-x-Th.hmax || y < -1-x+Th.hmax || y > 1+x-Th.hmax || y < -1+x+Th.hmax), label = 0);
             int j = 0;
             varf vOn(u, v) = on(labPeriodic[j], u = 1);
             fespace Vh(ThLocal, P1);
@@ -44,7 +44,7 @@ if(mpisize > 1) {
             touch = 0;
             for(j = 0; j < labPeriodic.n; ++j) {
                 u[] = vOn(0, Vh);
-                mesh ThLocalMoved;
+                mesh3 ThLocalMoved;
                 if(u[].linfty > 1e-12) {
                     if(j == 0) {
                         ThLocalMoved = movemesh(ThLocal, [x + 1, y - 1]);
@@ -65,19 +65,19 @@ if(mpisize > 1) {
                 }
                 if(j == 3) {
                     if(touch[0] == 1 && touch[2] == 1) {
-                        mesh ThLocalMovedSecond = movemesh(ThLocal, [x, y - 2]);
+                        mesh3 ThLocalMovedSecond = movemesh(ThLocal, [x, y - 2]);
                         ThLocalMoved = ThLocalMoved + ThLocalMovedSecond;
                     }
                     if(touch[0] == 1 && touch[3] == 1) {
-                        mesh ThLocalMovedSecond = movemesh(ThLocal, [x + 2, y]);
+                        mesh3 ThLocalMovedSecond = movemesh(ThLocal, [x + 2, y]);
                         ThLocalMoved = ThLocalMoved + ThLocalMovedSecond;
                     }
                     if(touch[1] == 1 && touch[2] == 1) {
-                        mesh ThLocalMovedSecond = movemesh(ThLocal, [x - 2, y]);
+                        mesh3 ThLocalMovedSecond = movemesh(ThLocal, [x - 2, y]);
                         ThLocalMoved = ThLocalMoved + ThLocalMovedSecond;
                     }
                     if(touch[1] == 1 && touch[3] == 1) {
-                        mesh ThLocalMovedSecond = movemesh(ThLocal, [x, y + 2]);
+                        mesh3 ThLocalMovedSecond = movemesh(ThLocal, [x, y + 2]);
                         ThLocalMoved = ThLocalMoved + ThLocalMovedSecond;
                     }
                 }
@@ -124,7 +124,7 @@ include "deltaUZero.idp"
 
 macro fillA() /* A = Stiffness Matrix */ 
 { /* Fill Stiffness Matrix A */
-    varf a(u, v) = H1(u, v, Th) + deltaUZero(u);
+    varf a(u, v) = H1(u, v, Th) + deltaUZeroPeriodic(u);
 
     INFO("initiate structure for partitioning matrix")
     MatCreate(Th, A, Pk);
@@ -140,14 +140,14 @@ macro fillA() /* A = Stiffness Matrix */
 macro fillWLl(theta)
 {
     /* set none zero dirchlet condition */
-    varf bndDirichlet(unused, v) = deltaUZero(unused) + on(theta + 7, unused = 1); 
+    varf bndDirichlet(unused, v) = deltaUZeroPeriodic(unused) + on(theta + 7, unused = 1); 
     
     wh[] = bndDirichlet(0, Vh, tgv = -1); 
 
     W(INDC(theta)) = wh[];
 
     /* compute rhs of weak formulation */
-    varf rhs(unused, v) = -H1(wh, v, Th) + deltaUZero(unused); 
+    varf rhs(unused, v) = -H1(wh, v, Th) + deltaUZeroPeriodic(unused); 
     
     l = rhs(0, Vh, tgv = -1); 
 

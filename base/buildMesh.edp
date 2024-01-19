@@ -20,7 +20,7 @@ real ratioRadiusEdge = 2.0; // default 2.0; advance 1.6; advance2 1.4; advance3 
 
 real minDihedralAngle = 18.0; // default 0.0; advance 18.0; advance2 18.0; advance3 18.0
 
-real boxSize = 90;
+real boxSize = 900;
 
 real maxVol = boxSize^3;
 
