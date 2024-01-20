@@ -28,16 +28,16 @@ rebuildMesh=true
 IS_CLUSTER=false
 mem=2700
 
-while getopts 'm:c:o:lM:C' opt
+while getopts 'p:m:c:o:lM:' opt
 do 
     case $opt in
         m) meshNameIn="$OPTARG";;
         o) meshNameOut="$OPTARG";;
         c) configName="$OPTARG";;
+        p) settingName="$OPTARG";;
         l) onlyRelabel=true;;
-        C) IS_CLUSTER=true;;
         M) mem="$OPTARG";;
-#        f) rebuildMesh=false;;
+        #        f) rebuildMesh=false;;
     esac
 done
 
@@ -62,6 +62,12 @@ if [ ! -f "$configFile" ]; then
     exit 1
 fi
 
+settingFile="$dirSetting/$settingName.csv"
+if [ ! -f "$settingFile" ]; then
+    echo "Error: Setting file $settingFile does not exist"
+    exit 1
+fi
+
 meshFileIn="$dirMesh/$meshNameIn.mesh"; meshFileOut="$dirMesh/$meshNameOut.mesh"; 
 
 meshSFile="$dirMesh/$meshNameOut.meshS" 
@@ -79,37 +85,23 @@ logMesh="$dirMesh/$meshNameOut.logMesh"
 echo "$meshFileIn" >> "$logMesh"
 echo "$meshFileOut" >> "$logMesh"
 echo "$configFile" >> "$logMesh"
+echo "$settingFile" >> "$logMesh"
 
 #------------------------------------------------------------
 # RUN
 #------------------------------------------------------------
 
-create_run_ff_command() {
-    local jobName="$1"
 
-    if [ -z "$jobName" ]; then
-        echo "srun --exact -u -c1 -n1 --mem-per-cpu=${mem}M --mpi=pmi2 \
-        apptainer run $mogon_setup FreeFem++-mpi"
-    else
-        echo "srun --exact -u -c1 -n1 --mem-per-cpu=${mem}M --mpi=pmi2 \
-            -J ${jobName} -e ./${dirSlurmMesh}/${jobName}.err -o ./${dirSlurmMesh}/${jobName}.out \
-            apptainer run $mogon_setup FreeFem++-mpi"
-    fi
-}
+jobName="mesh_${meshNameOut}"
+ff="$( create_ff "1" "${mem}" "${dirSlurmMesh}" "${jobName}" )"
 
-# Usage
+if $BUILD_MESHS; then $ff buildMeshS.edp -c "$configFile" -o "$meshSFile" -i "$dirIco" -p "$settingFile"; fi
 
-RUN_FF="FreeFem++"
+if $BUILD_MESH; then $ff buildMesh.edp -c "$configFile" -m "$meshSFile" -o "$meshFileOut" -p "$settingFile"; fi
 
-jobName="mesh_${meshNameOut}"; if $IS_CLUSTER; then RUN_FF="$( create_run_ff_command "$jobName" )"; fi
+ff="$( create_ff "1" "${mem}" )"
 
-if $BUILD_MESHS; then $RUN_FF buildMeshS.edp -c "$configFile" -o "$meshSFile" -i "$dirIco"; fi
-
-if $BUILD_MESH; then $RUN_FF buildMesh.edp -c "$configFile" -m "$meshSFile" -o "$meshFileOut"; fi
-
-jobName=""; if $IS_CLUSTER; then RUN_FF="$( create_run_ff_command "$jobName" )"; fi
-
-if $RELABEL_MESH; then $RUN_FF relabelMesh.edp -c "$configFile" -m "$meshFileIn" -o "$meshFileOut"; fi
+if $RELABEL_MESH; then $ff relabelMesh.edp -c "$configFile" -m "$meshFileIn" -o "$meshFileOut"; fi
 
 
 #srun --exact -u -c1 -n1 --mem-per-cpu=${mem}M --mpi=pmi2 \

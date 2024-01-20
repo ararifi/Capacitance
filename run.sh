@@ -29,15 +29,15 @@ mem="1000"
 
 IS_CLUSTER=false
 
-while getopts 's:m:c:N:M:C' opt
+while getopts 'p:s:m:c:N:M:' opt
 do 
     case $opt in
         s) simName="$OPTARG";;
         m) meshName="$OPTARG";;
         c) configName="$OPTARG";;
+        p) settingName="$OPTARG";;
         N) cpus="$OPTARG";;
         M) mem="$OPTARG";;
-        C) IS_CLUSTER=true;;
     esac
 done
 
@@ -80,7 +80,7 @@ else
     echo "WARNING: Mesh file does not exist. Setting meshName as configName..."
     meshName="$configName"; meshFile="$dirMesh/$meshName.mesh"
     echo "Building mesh..."
-    ./runMesh.sh -m "$meshName" -c "$configName"
+    ./runMesh.sh -m "$meshName" -c "$configName" -p "$settingName"
 fi
 
 
@@ -98,29 +98,19 @@ echo "$configName" >> "$outputFile"
 echo "$configFile" >> "$outputFile"
 echo "$meshName" >> "$outputFile"
 echo "$meshFile" >> "$outputFile"
+echo "$settingName" >> "$outputFile"
+echo "$settingFile" >> "$outputFile"
 
 
 # run simulation 
-if ! $IS_CLUSTER; then
-    echo "Running simulation locally..."
+ff="$( create_ff ${cpus} ${mem} ${dirSlurm} ${simName} )"
 
-    mpirun -np "$cpus" FreeFem++-mpi laplace.edp -c "$configFile" -m "$meshFile" -o "$dirOutput" -n "$simName"
-    # FreeFem++-mpi laplace.edp -c "$configFile" -m "$meshFile" -o "$dirOutput" -n "$simName"
-    exit 0
-else
-    echo "Running simulation on cluster..."
-    
-    jobID=""
-    if [[ -z "$SLURM_ARRAY_JOB_ID" ]]; then
-        jobID="${SLURM_JOB_ID}_0"
-    else
-        jobID="${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}"
-    fi
-    jobName="${simName}_${jobID}"
+$ff laplacePeriodicSfc.edp -c "$configFile" -m "$meshFile" -o "$dirOutput" -n "$simName"
 
-    srun --exact -u -c1 -n${cpus} --mem-per-cpu=${mem}M --mpi=pmi2 \
-        -J ${jobName} -e "./${dirSlurm}/${jobName}.err" -o "./${dirSlurm}/${jobName}.out" \
-        apptainer run $mogon_setup FreeFem++-mpi laplacePeriodic.edp -c "$configFile" -m "$meshFile" -o "$dirOutput" -n "$simName"
-    exit 0
-fi
-        
+# jobID=""
+# if [[ -z "$SLURM_ARRAY_JOB_ID" ]]; then
+#     jobID="${SLURM_JOB_ID}_0"
+# else
+#     jobID="${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}"
+# fi
+# jobName="${simName}_${jobID}"

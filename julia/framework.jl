@@ -102,6 +102,20 @@ function initConfig( )
     return config 
 end
 
+function initSetting( )
+    """ 
+    Datastructure example:
+    objectParameter1,objectParameter2,objectParameter3
+    boxSizeX,boxSizeY,boxSizeZ
+    numElemX,numElemY,numElemZ
+    tetgenSwitch, rre, mdh
+    """
+    
+    config = DataFrame( objectParameter1 = Any[], objectParameter2 = Any[], objectParameter3 = Any[] )
+    return config 
+end
+
+
 function row_it_old( config )
         fused_array = []
         for col in eachcol(config)

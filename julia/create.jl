@@ -244,3 +244,9 @@ function MultiToLin(x, y, z, dimension)
     ind = Int((z - 1) * dimension^2 + (y - 1) * dimension + x)
     return ind
 end
+
+function fillSetting( setting, BoxSize, NumElemBox, tetgen_switch, rer, mindh )
+    push!( setting, BoxSize )
+    push!( setting, NumElemBox )
+    push!( setting, [tetgen_switch, rer, mindh] )
+end

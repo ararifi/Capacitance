@@ -74,12 +74,16 @@ mesh3 Th = readmesh3(meshFile);
 
 // distribute overlapped mesh to the other processeors
 macro ThPeriodicity()labPeriodic//
-Mat A; 
 int[int] n2o;
 macro ThN2O()n2o//
 
+fespace Ph(Th, P0); Ph part;
+
 DmeshCreate(Th);
 
+createPartition(Th, part[], P0)
+int[int] n2o2;
+mesh3 ThNo = trunc(Th, abs(part - 1.0) < 1e-1, new2old = n2o2);
 
 // -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-
 // (1) DEFINING
@@ -93,7 +97,7 @@ Vh uh; real[int] U(dofAll);// Solution function and vector
 
 Vh wh; real[int] W(dofAll), L(dofAll);// Boundary function and vectors
 
-real[int] l(Vh.ndof);// Stiffness matrix and rhs
+Mat A; real[int] l(Vh.ndof);// Stiffness matrix and rhs
 
 // -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-
 // (2) SOLVING AND FILLING
@@ -121,4 +125,17 @@ for( int theta1 = 0; theta1 < cardTheta; ++theta1 ){
         writeCap( theta1, theta2 );
     }
     if( mpirank == 0 ) writeOutArray( streamLogCap, Cap );
+}
+
+ofstream streamLogCapSfc( outputDir + "/capSfc_"+outputName+".log" );
+streamLogCapSfc.precision(16);
+for( int theta1 = 0; theta1 < cardTheta; ++theta1 ){ 
+    real[int] Cap( cardTheta - theta1 );
+    for( int theta2 = theta1; theta2 < cardTheta; ++theta2 ){ 
+        INFO( "Computing capacitance by sfc between " + theta1 + " and " + theta2 );
+        // here evaluate the capacitance between theta1 and theta2
+        // and write it to Cap[theta1]
+        writeCapSfc( theta1, theta2 );  
+    }
+    if( mpirank == 0 ) writeOutArray( streamLogCapSfc, Cap );
 }

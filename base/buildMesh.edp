@@ -10,19 +10,33 @@ string meshSFile = getARGV("-m", "mesh.meshS");
 
 string meshFile = getARGV("-o", "mesh.mesh");
 
+string settingFile = getARGV("-p", "config_setting.csv");
+
 //-------------------------------------------------------
 // SETTINGS
 
-string addSwitch = "";
+string[int] settings = readConfig(settingFile); 
+assert(!checkIsEmpty(settings));
 
+string boxSize = settings[0];
+real boxSizeX = atof(getLineByIndex(boxSize, 0));
+real boxSizeY = atof(getLineByIndex(boxSize, 1));
+real boxSizeZ = atof(getLineByIndex(boxSize, 2));
+
+string numElem = settings[1];
+int numElemX = atoi(getLineByIndex(numElem, 0));
+int numElemY = atoi(getLineByIndex(numElem, 1));
+int numElemZ = atoi(getLineByIndex(numElem, 2));
+
+
+string tetgen = settings[2];
+
+string addSwitch = getLineByIndex(tetgen, 0);
 // radius edge radius for the tetgen mesh3
-real ratioRadiusEdge = 2.0; // default 2.0; advance 1.6; advance2 1.4; advance3 2.0
-
-real minDihedralAngle = 18.0; // default 0.0; advance 18.0; advance2 18.0; advance3 18.0
-
-real boxSize = 900;
-
-real maxVol = boxSize^3;
+real ratioRadiusEdge = atof(getLineByIndex(tetgen, 1)); // default 2.0; advance 1.6; advance2 1.4; advance3 2.0
+real minDihedralAngle = atof(getLineByIndex(tetgen, 2)); // default 0.0; advance 18.0; advance2 18.0; advance3 18.0
+real maxBoxSize = max(boxSizeX, boxSizeY, boxSizeZ);
+real maxVol = maxBoxSize^3;
 
 //-------------------------------------------------------
 // MESHING
@@ -36,14 +50,12 @@ int numObjects = Positions.n / 3;
 
 // load meshS
 meshS ThS = readmeshS(meshSFile);
-
 mesh3 Th;
 {// mesh3: use tetgen to mesh the domain
     /* ----- 3D TETGEN MESH ----- */
-    real[int] domain = [boxSize/2 * 0.99, 0, 0, 0, maxVol];
-
+    real[int] domain = [boxSizeX/2.0 * 0.99, boxSizeY/2.0 * 0.99, boxSizeZ/2.0 * 0.99, 0, maxVol];
     string mySwitch = "pq"+string(ratioRadiusEdge)+"/"+string(minDihedralAngle)+"aAY" + addSwitch + "CV";
-
+    cout << "boxSize" << mySwitch << endl;
     Th = tetg(
         ThS, 
         switch=mySwitch, 

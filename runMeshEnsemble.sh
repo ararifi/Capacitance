@@ -17,12 +17,13 @@ configName=""
 meshName=""
 cpus="1"
 
-while getopts 'm:c:M:' opt
+while getopts 'm:c:M:p:' opt
 do 
     case $opt in
         # specifically the prefix like name_ind
         m) meshName="$OPTARG";;
         c) configName="$OPTARG";;
+        p) settingName="$OPTARG";;
         M) mem="$OPTARG";;
     esac
 done
@@ -46,9 +47,9 @@ configNames="$( find $dirConfig -maxdepth 1 -name "${configName}*" -type f -exec
 indices="$( echo "$configNames" | grep -oP '\d+' | sort -n )"
 
 if [ -z "$meshName" ]; then
-    echo $configNames | tr ' ' '\n' | parallel "./runMesh.sh -m "{}" -c "{}" -M "$mem" -C"
+    echo $configNames | tr ' ' '\n' | parallel "./runMesh.sh -m "{}" -c "{}" -M "$mem" -C -p "$settingName""
 else
-    echo $indices | tr ' ' '\n' | parallel "./runMesh.sh -m "${meshName}_{}"  -c "${configName}_{}" -M "$mem" -C"
+    echo $indices | tr ' ' '\n' | parallel "./runMesh.sh -m "${meshName}_{}"  -c "${configName}_{}" -M "$mem" -C -p "$settingName""
 fi
 
 #./run.sh -s ${simName}_${ind} -c ${configName}_${ind} -n ${cpus} 

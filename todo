@@ -1,5 +1,8 @@
 OK 1. Create bash files to run the 3 files "buildMeshS.edp", "buildMesh.edp" and "main.edp" in that order automatically, and create additionally the directories for the output.
-2. Create julia files that creates the config files.
-3. Setup for mogon and run problems.
+OK 2. Create julia files that creates the config files.
+OK 3. Setup for mogon and run problems.
 4. Implement for screened problem.
 OK 5. Add relabing of the mesh.
+OK 6. Implement (properly) Settings
+7. Implement an version for calculating the surface integral ( only 1 np enough: periodicTest ... )
+8. Separate Periodic simulation and the one without
