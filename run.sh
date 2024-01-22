@@ -27,8 +27,6 @@ configName=""
 cpus="4"
 mem="1000"
 
-IS_CLUSTER=false
-
 while getopts 'p:s:m:c:N:M:' opt
 do 
     case $opt in
@@ -103,7 +101,7 @@ echo "$settingFile" >> "$outputFile"
 
 
 # run simulation 
-ff="$( create_ff ${cpus} ${mem} ${dirSlurm} ${simName} )"
+ff="$( create_ff ${cpus} ${mem} ${simName} ${dirSlurm} )"
 
 $ff laplacePeriodicSfc.edp -c "$configFile" -m "$meshFile" -o "$dirOutput" -n "$simName"
 

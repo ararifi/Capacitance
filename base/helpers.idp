@@ -77,14 +77,34 @@ macro solveU(theta)
     U(INDC(theta)) = temp;
 }//
 
+macro fillunity()
+{
+    /* here scale the boundaries on the periodic boundary */
+    unity = 1.0;
+    
+    for( int boxLabel = 1; boxLabel <= 6; boxLabel++ )
+    {
+        varf boxDirichlet(unused, v) = on(boxLabel, unused = 1); 
+        unity += boxDirichlet(0, Vh, tgv = -1);
+    }
+}//
 
 macro writeCap(theta1, theta2)
-{
-    real[int] temp = A * U(INDC(theta2));
+{   
+
     
-    real U1U2 = A(U(INDC(theta1)), temp); real W1L2 = A(W(INDC(theta1)), L(INDC(theta2)));
+    real[int] U2 = A * U(INDC(theta2)); U2 ./= unity;
+    
+    real[int] U1 = U(INDC(theta1)); U1 ./= unity; 
+
+    real[int] W1 = W(INDC(theta1)); W1 ./= unity; 
+
+    real[int] L2 = L(INDC(theta2)); L2 ./= unity;
+    
+    real U1U2 = A(U1, U2); real W1L2 = A(W1, L2);
 
     Cap[ theta2 - theta1 ] = 1.0 / (4 * pi) * (W1L2 - U1U2);
+
 }//
 
 macro writeCapSfc(theta1, theta2)

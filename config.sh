@@ -9,14 +9,35 @@
 # --- !!! ---
 
 #------------------------------------------------------------
+# DEFAULT
+#------------------------------------------------------------
+
+dirRoot="data"
+dirOutput="$dirRoot/output"
+dirMesh="$dirRoot/mesh"
+dirConfig="$dirRoot/config"
+dirSetting="$dirRoot/setting"
+dirSlurm="$dirRoot/slurm"
+dirSlurmMesh="$dirRoot/slurmMesh"
+
+dirBase="base"
+dirIco="pkgMesh/meshSicosphere/meshS/"
+ 
+#------------------------------------------------------------
 # FreeFem++
 #------------------------------------------------------------
+
+if [ -z "$PRJPATH" ]; then echo "PRJPATH is not set"; exit 1; fi
+if [ -z "$FFAPTPATH" ]; then echo "FFAPTPATH is not set"; exit 1; fi
+
+
+apt_setup="--env FF_INCLUDEPATH="$dirBase" --env FF_LOADPATH="$dirBase" --no-home --bind ${PRJPATH}/Capacitance:/home/aarifi/Projects/Capacitance --pwd /home/aarifi/Projects/Capacitance ${FFAPTPATH}"
 
 create_srun_ff() {
     local ntasks="$1"
     local mem="$2"
-    local slurmDir="$3"
-    local jobName="$4"
+    local jobName="$3"
+    local slurmDir="$4"
 
     slurm_srun="srun --exact -c1 -n${ntasks} --mem-per-cpu=${mem}M --mpi=pmi2"
     slurm_info=""
@@ -25,14 +46,14 @@ create_srun_ff() {
     else
         slurm_info="-J ${jobName} -e ./${slurmDir}/${jobName}.err -o ./${slurmDir}/${jobName}.out"
     fi
-    slurm_cmd="apptainer run $mogon_setup FreeFem++-mpi"
+    slurm_cmd="apptainer run $apt_setup FreeFem++-mpi"
 
     echo "${slurm_srun} ${slurm_info} ${slurm_cmd}"
 }
 
 create_mpirun_ff() {
     local ntasks="$1"
-    echo "apptainer run /home/aarifi/Projects/FreeFem_Sandbox /usr/freefem/ff-petsc/r/bin/mpirun -np $ntasks FreeFem++-mpi -wg"
+    echo "apptainer run $apt_setup /usr/freefem/ff-petsc/r/bin/mpirun -np $ntasks FreeFem++-mpi -wg"
 }
 
 create_ff() {
@@ -49,19 +70,3 @@ create_ff() {
 }
 
 
-#------------------------------------------------------------
-# DEFAULT
-#------------------------------------------------------------
-
-dirRoot="data"
-dirOutput="$dirRoot/output"
-dirMesh="$dirRoot/mesh"
-dirConfig="$dirRoot/config"
-dirSetting="$dirRoot/setting"
-dirSlurm="$dirRoot/slurm"
-dirSlurmMesh="$dirRoot/slurmMesh"
-
-dirBase="base"
-dirIco="pkgMesh/meshSicosphere/meshS/"
-export FF_INCLUDEPATH="$dirBase"
-export FF_LOADPATH="$dirBase"
