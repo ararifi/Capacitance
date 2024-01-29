@@ -25,21 +25,24 @@ meshNameIn=""
 configName=""
 onlyRelabel=false
 rebuildMesh=true
-IS_CLUSTER=false
 mem=2700
 
-while getopts 'p:m:c:o:lM:' opt
+while getopts 'p:m:c:o:M:i:l' opt
 do 
     case $opt in
         m) meshNameIn="$OPTARG";;
         o) meshNameOut="$OPTARG";;
         c) configName="$OPTARG";;
         p) settingName="$OPTARG";;
+        i) index="$OPTARG";;
+
         l) onlyRelabel=true;;
         M) mem="$OPTARG";;
         #        f) rebuildMesh=false;;
     esac
 done
+
+source configIndex.sh
 
 if [ -z "$meshNameIn" ]; then
     echo "Error: No input mesh name provided"
@@ -90,16 +93,17 @@ echo "$settingFile" >> "$logMesh"
 #------------------------------------------------------------
 # RUN
 #------------------------------------------------------------
-
+# apptainer shell --no-home --bind /home/aarifi/prjs/Capacitance:/home/aarifi/Projects/Capacitance --pwd /home/aarifi/Projects/Capacitance /home/aarifi/cnts/ff
 
 jobName="mesh_${meshNameOut}"
-ff="$( create_ff "1" "${mem}" "${dirSlurmMesh}" "${jobName}" )"
+ff="$( create_ff "1" "${mem}" "${jobName}" "${dirSlurmMesh}" )"
 
 if $BUILD_MESHS; then $ff buildMeshS.edp -c "$configFile" -o "$meshSFile" -i "$dirIco" -p "$settingFile"; fi
 
 if $BUILD_MESH; then $ff buildMesh.edp -c "$configFile" -m "$meshSFile" -o "$meshFileOut" -p "$settingFile"; fi
 
-ff="$( create_ff "1" "${mem}" )"
+jobName="mesh_relabel_${meshNameOut}"
+ff="$( create_ff "1" "${mem}" "${jobName}" )"
 
 if $RELABEL_MESH; then $ff relabelMesh.edp -c "$configFile" -m "$meshFileIn" -o "$meshFileOut"; fi
 

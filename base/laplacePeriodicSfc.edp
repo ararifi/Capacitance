@@ -110,6 +110,11 @@ for( int theta = 0; theta < cardTheta; ++theta ){
     solveU(theta); // solve for U[theta]
 }
 
+// get unity vector in order to rescale on the boundary
+real[int] unity(Vh.ndof); unity = 1;
+fillunity
+
+
 // -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-
 // (3) COMUTING CAPACITANCE
 // -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-
