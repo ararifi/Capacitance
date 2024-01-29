@@ -5,4 +5,5 @@
 *.out
 *.err
 *.csv
+
 !pkgMesh/meshSicosphere/meshS/*.mesh

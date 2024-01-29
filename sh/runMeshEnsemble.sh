@@ -1,10 +1,10 @@
 #!/bin/bash
 
 #------------------------------------------------------------
-# CONFIG 
+# CONFIG
 #------------------------------------------------------------
 
-source config.sh
+source ./ensembleConfig.sh
 
 #------------------------------------------------------------
 # INPUT
@@ -17,7 +17,7 @@ configName=""
 meshName=""
 cpus="1"
 
-while getopts 'm:c:M:p:' opt
+while getopts 'm:c:M:p:i:' opt
 do 
     case $opt in
         # specifically the prefix like name_ind
@@ -25,6 +25,7 @@ do
         c) configName="$OPTARG";;
         p) settingName="$OPTARG";;
         M) mem="$OPTARG";;
+        i) index="$OPTARG";;
     esac
 done
 
@@ -33,33 +34,40 @@ if [ -z "$configName" ]; then
     exit 1
 fi
 
+if [ -z "$settingName" ]; then
+    echo "ERROR: No setting name provided. Exiting..."
+    exit 1
+fi
+
 if [ -z "$meshName" ]; then 
     meshName="$configName"
     echo "WARNING: No mesh name provided. Using config name instead: $configName"
 fi
 
+
 #------------------------------------------------------------
 # RUN
 #------------------------------------------------------------
 
-configNames="$( find $dirConfig -maxdepth 1 -name "${configName}*" -type f -exec basename {} \; | sed 's/\.[^.]*$//' | sed 's/\.[^.]*$//' )"
-# extract the config names without suffix
-indices="$( echo "$configNames" | grep -oP '\d+' | sort -n )"
-
-if [ -z "$meshName" ]; then
-    echo $configNames | tr ' ' '\n' | parallel "./runMesh.sh -m "{}" -c "{}" -M "$mem" -C -p "$settingName""
-else
-    echo $indices | tr ' ' '\n' | parallel "./runMesh.sh -m "${meshName}_{}"  -c "${configName}_{}" -M "$mem" -C -p "$settingName""
+if [ -z "$index" ]; then
+    
 fi
 
-#./run.sh -s ${simName}_${ind} -c ${configName}_${ind} -n ${cpus} 
+# jobID=""
+# if [[ -z "$SLURM_ARRAY_JOB_ID" ]]; then
+#     jobID="${SLURM_JOB_ID}_0"
+# else
+#     jobID="${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}"
+# fi
+# jobName="${simName}_${jobID}"
 
-#for (( i=$startInd; i<=$endInd; i++ ))
-#do
-#    echo "Running simulation $i"    
-#    if [ -z "$meshName" ]; then
-#        
-#    else
-#        ./run.sh -s ${simName}_${i} -c ${meshName} -m ${meshName}
-#    fi
-#done
+configNames="$( get_configNames $dirConfig $configName)"
+
+indices="$( extract_indices $configNames )"
+
+get_index_config="$( get_index_config $indices $index )"
+
+
+
+
+run_by_indices_parallel $indices "./runMesh.sh"

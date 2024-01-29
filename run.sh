@@ -27,17 +27,21 @@ configName=""
 cpus="4"
 mem="1000"
 
-while getopts 'p:s:m:c:N:M:' opt
+while getopts 'p:s:m:c:N:M:i:' opt
 do 
     case $opt in
         s) simName="$OPTARG";;
         m) meshName="$OPTARG";;
         c) configName="$OPTARG";;
         p) settingName="$OPTARG";;
+        i) index="$OPTARG";;
+        
         N) cpus="$OPTARG";;
         M) mem="$OPTARG";;
     esac
 done
+
+source configIndex.sh
 
 if [ -z "$simName" ]; then
     echo "ERROR: No simulation name provided. Exiting..."
@@ -78,7 +82,7 @@ else
     echo "WARNING: Mesh file does not exist. Setting meshName as configName..."
     meshName="$configName"; meshFile="$dirMesh/$meshName.mesh"
     echo "Building mesh..."
-    ./runMesh.sh -m "$meshName" -c "$configName" -p "$settingName"
+    ./runMesh.sh -m "$meshName" -c "$configName" -p "$settingName" -i "$index" -M "2700"
 fi
 
 
