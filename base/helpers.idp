@@ -156,3 +156,15 @@ macro record
 {
     recordVar(cap, Cap);
 }//
+
+macro notifyStart
+{
+    string msgDir = outputDir + "/" + outputName + ".start";
+    ofstream streamLog(msgDir);
+}//
+
+macro notifySuccess
+{
+    string msgDir = outputDir + "/" + outputName + ".success";
+    ofstream streamLog(msgDir);
+}//

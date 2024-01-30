@@ -1,3 +1,5 @@
+notifyStart
+
 //-------------------------------------------------------
 // LOAD & INCLUDES
 
@@ -104,6 +106,9 @@ Mat A; real[int] l(Vh.ndof);// Stiffness matrix and rhs
 // -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-
 
 fillA // fill stiffness matrix
+
+notifySuccess
+
 for( int theta = 0; theta < cardTheta; ++theta ){ 
     fillWLl(theta);  // fill boundary vectors
     // for [ i, elem : test ]{ if ( elem != 0.0 ){ INFO("BINGO"); break; } } // set boundary vector to 1 on boundary
