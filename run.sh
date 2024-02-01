@@ -15,6 +15,8 @@
 
 source config.sh
 
+source timer.sh
+
 #------------------------------------------------------------
 # INPUT
 #------------------------------------------------------------
@@ -103,11 +105,16 @@ echo "$meshFile" >> "$outputFile"
 echo "$settingName" >> "$outputFile"
 echo "$settingFile" >> "$outputFile"
 
+timeOut $dirOutput $simName $simName &
+timerID=$!
 
 # run simulation 
 ff="$( create_ff ${cpus} ${mem} ${simName} ${dirSlurm} )"
 
 $ff laplacePeriodicSfc.edp -c "$configFile" -m "$meshFile" -o "$dirOutput" -n "$simName"
+
+wait $timerID
+
 
 # jobID=""
 # if [[ -z "$SLURM_ARRAY_JOB_ID" ]]; then

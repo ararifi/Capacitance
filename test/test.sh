@@ -1,7 +1,8 @@
 #!/bin/bash
 
-touch recordFileStart
+touch $recordFileStart
+echo "recordFileStart: $recordFileStart"
+sleep 1
 
-sleep 10
-
-touch recordFileSuccess
+touch $recordFileSuccess
+echo "recordFileSuccess: $recordFileSuccess"

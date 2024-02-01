@@ -19,10 +19,9 @@ timeOut() {
     while ! $SIGNAL_A; do   
         sleep $INTERVAL
         # check if $recordFile exist 
-        if [ ! -f "$recordFileStart" ]; then SIGNAL_A=true; fi
+        if [ -f "$recordFileStart" ]; then SIGNAL_A=true; fi
     done
-
-    rm -rf $recordFileStart
+    ls -l "$recordFileStart"
 
     # ----- SINGAL_B -----
 
@@ -36,20 +35,27 @@ timeOut() {
 
             sleep $INTERVAL
 
-            if [ ! -f "$recordFileSuccess"  ]; then SIGNAL_B=true; fi
+            if [ -f "$recordFileSuccess"  ]; then SIGNAL_B=true; fi
 
             TIME_NOW="$(( $TIME_NOW+$INTERVAL ))"
+
         done
     fi
 
-    rm -rf $recordFileSuccess
 
     if ! $SIGNAL_B; then
-        scancel -n"$jobStepName" --me
-        echo "TIME_OUT"
+        jobID="${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}"
+        if [[ -z "${SLURM_ARRAY_JOB_ID}" ]]; then
+            jobID="$SLURM_JOB_ID"
+        fi
+        #scancel --name $jobStepName
+        echo "INFO: time out, kill job $jobStepName under jobID $jobID"
+        sacct -j"$jobID" --format="JobID, JobName%50" | grep -P "${jobStepName}" | awk '{print $1}' | xargs -i scancel {} &> /dev/null
     else
-        echo "DONE"
+        echo "INFO: done"
     fi
+    rm -rf "$recordFileStart"
+    rm -rf "$recordFileSuccess"
 }
 export -f timeOut
 
@@ -59,7 +65,7 @@ export recordFileStart="$notificationDir/$simName.start"
 export recordFileSuccess="$notificationDir/$simName.success"
 
 timeOut $simName $simName &
-
-srun -J $simName -n"1" --mem"2700" test.sh $simName $simName;
-
+bgID=$!
+srun -J"$simName" --exclusive -n"1" --mem "2700" test.sh $simName $simName;
+wait $bgID
 

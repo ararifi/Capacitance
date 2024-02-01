@@ -22,7 +22,12 @@ dirSlurmMesh="$dirRoot/slurmMesh"
 
 dirBase="base"
 dirIco="pkgMesh/meshSicosphere/meshS/"
- 
+
+export IS_CLUSTER=false
+if [ -n "$SLURM_JOB_ID" ] || [ -n "$SLURM_ARRAY_JOB_ID" ]; then
+    IS_CLUSTER=true
+fi
+
 #------------------------------------------------------------
 # FreeFem++
 #------------------------------------------------------------
@@ -68,5 +73,7 @@ create_ff() {
         echo "$( create_mpirun_ff $ntasks )"
     fi
 }
+
+
 
 

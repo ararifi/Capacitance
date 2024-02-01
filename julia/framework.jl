@@ -45,9 +45,11 @@ function read_capacitance(filepath)
 end
 
 # Function read filepath in order to obtain config and data
-function read_data(dataPath, dataName)
+function read_data(dataPath, dataName, sfc=false)
     dataLogFile = joinpath(dataPath, dataName * ".log")
-    capFile = joinpath(dataPath, "cap_" * dataName * ".log")
+    capFilename = "cap_" * dataName * ".log"
+    if sfc; capFilename = "capSfc_" * dataName * ".log"; end
+    capFile = joinpath(dataPath, capFilename)
 
     # Check if dataLogFile exists
     if !isfile(dataLogFile)

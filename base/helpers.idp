@@ -35,13 +35,35 @@ IFMACRO(!deltaUDirichlet)
 ENDIFMACRO
 
 
+macro notifyStart()
+if(mpirank == 0){
+    string msgDir = outputDir + "/" + outputName + ".start";
+    ofstream streamLog(msgDir);
+}//
+
+macro notifySuccess()
+if(mpirank == 0){
+    string msgDir = outputDir + "/" + outputName + ".success";
+    ofstream streamLog(msgDir);
+}//
+
+macro notify( name )
+if(mpirank == 0){
+    string msgDir = outputDir + "/" + outputName + "_" + name + ".signal";
+    ofstream streamLog(msgDir);
+}//
+
 
 macro fillA() /* A = Stiffness Matrix */ 
 { /* Fill Stiffness Matrix A */
     varf a(u, v) = H1(u, v, Th) + deltaUDirichlet(u);
 
     INFO("initiate structure for partitioning matrix")
+    
     MatCreate(Th, A, Pk);
+    
+    notify("B")
+    
     INFO("fill stiffness matrix")
     A = a(Vh, Vh, tgv = -2);
 
@@ -126,15 +148,45 @@ macro writeCapSfc(theta1, theta2)
 }
 //
 
+macro writeL2(theta1, theta2)
+{
+    uh[] = U(INDC(theta1)) + W(INDC(theta1)); wh[] = U(INDC(theta2)) + W(INDC(theta2));
+
+    real localL2 = H0(uh, wh, ThNo);
+
+    real globalL2; mpiAllReduce(localL2, globalL2, mpiCommWorld, mpiSUM);
+
+    H0SPnorm[ theta2 - theta1 ] = (1.0/ThNo.measure) * globalL2;
+
+    H0SP[ theta2 - theta1 ] = globalL2;
+}
+//
+
+macro writeH1(theta1, theta2)
+{
+    uh[] = U(INDC(theta1)) + W(INDC(theta1)); wh[] = U(INDC(theta2)) + W(INDC(theta2));
+
+    real localH1 = H1(uh, wh, ThNo);
+
+    real globalH1; mpiAllReduce(localH1, globalH1, mpiCommWorld, mpiSUM);
+
+    H1SPnorm[ theta2 - theta1 ] = (1.0/ThNo.measure) * globalH1;
+
+    H1SP[ theta2 - theta1 ] = globalH1;
+}
+//
+
 //-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 // AUXILIARY FUNCTIONS
 //-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 
-func bool writeOutArray( ofstream &file, real[int] &V ){
+func bool writeOutArray( string & file, real[int] &V ){
+    ofstream io( file ); 
+    io.precision(16);
     int last = V.n;
     for [ i,v : V ] {
-        file << v; 
-        if( i == last-1 ) file << endl; else file << ","; 
+        io << v; 
+        if( i == last-1 ) io << endl; else io << ","; 
     }
     return true;
 }
@@ -152,19 +204,8 @@ macro recordVar(varName, var)
     writeOutArray(streamLog#varName, var);
 }//
 
-macro record 
+macro record()
 {
     recordVar(cap, Cap);
 }//
 
-macro notifyStart
-{
-    string msgDir = outputDir + "/" + outputName + ".start";
-    ofstream streamLog(msgDir);
-}//
-
-macro notifySuccess
-{
-    string msgDir = outputDir + "/" + outputName + ".success";
-    ofstream streamLog(msgDir);
-}//
